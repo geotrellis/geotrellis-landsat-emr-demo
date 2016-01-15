@@ -5,6 +5,8 @@ javaOptions += "-Xmx8G"
 
 fork in run := true
 
+connectInput in run := true
+
 libraryDependencies ++= Seq(
   "com.azavea.geotrellis" %% "geotrellis-spark" % Version.geotrellis,
   "org.apache.spark" %% "spark-core" % "1.5.2",

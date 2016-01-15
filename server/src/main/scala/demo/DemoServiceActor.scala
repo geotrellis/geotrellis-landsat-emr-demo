@@ -10,7 +10,10 @@ import geotrellis.raster.histogram._
 import geotrellis.spark._
 import geotrellis.spark.io._
 import geotrellis.spark.op.stats._
+import geotrellis.spark.tiling._
 import geotrellis.vector._
+import geotrellis.vector.reproject._
+import geotrellis.proj4._
 
 import org.apache.spark._
 
@@ -30,17 +33,17 @@ import com.typesafe.config.ConfigFactory
 import scala.concurrent._
 
 class DemoServiceActor(
-  layerReader: FilteringLayerReader[LayerId, SpaceTimeKey, RasterMetaData, MultiBandRasterRDD[SpaceTimeKey]],
-  tileReader: CachingTileReader[SpaceTimeKey, MultiBandTile],
-  metadataReader: MetadataReader,
+  readerSet: ReaderSet,
   sc: SparkContext
 ) extends Actor with HttpService {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val dateTimeFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ")
 
+  val metadataReader = readerSet.metadataReader
+
   def isLandsat(name: String) =
-    name == "landsat"
+    name.contains("landsat")
 
   def cors: Directive0 = respondWithHeader(RawHeader("Access-Control-Allow-Origin", "*"))
 
@@ -54,31 +57,40 @@ class DemoServiceActor(
     pathPrefix("diff") { diffRoute }
 
   def catalogRoute =
-    get {
-      import spray.json.DefaultJsonProtocol._
-      complete {
-        future {
-          val layerInfo =
-            metadataReader.layerNamesToZooms
-              .keys
-              .map { name =>
-                val times =
-                  metadataReader.read(LayerId(name, 0)).times
-                    .map { instant => dateTimeFormat.print(new DateTime(instant)) }
-                (name, times)
-              }
+    cors {
+      get {
+        import spray.json.DefaultJsonProtocol._
+        complete {
+          future {
+            val layerInfo =
+              metadataReader.layerNamesToZooms
+                .keys
+                .toList
+                .sorted
+                .map { name =>
+                  val metadata = metadataReader.read(LayerId(name, 0))
+                  val extent =
+                    metadata.rasterMetaData.extent.reproject(metadata.rasterMetaData.crs, LatLng)
+                  val times =
+                    metadata.times
+                      .map { instant => dateTimeFormat.print(new DateTime(instant)) }
+                  (name, extent, times.sorted)
+                }
 
 
-          JsObject(
-            "layers" ->
-              layerInfo.map { li =>
-                JsObject(
-                  "name" -> JsString(li._1),
-                  "times" -> li._2.toJson,
-                  "isLandsat" -> JsBoolean(isLandsat(li._1))
-                )
-              }.toJson
-          )
+            JsObject(
+              "layers" ->
+                layerInfo.map { li =>
+                  val (name, extent, times) = li
+                  JsObject(
+                    "name" -> JsString(name),
+                    "extent" -> JsArray(Vector(Vector(extent.xmin, extent.ymin).toJson, Vector(extent.xmax, extent.ymax).toJson)),
+                    "times" -> times.toJson,
+                    "isLandsat" -> JsBoolean(isLandsat(name))
+                  )
+                }.toJson
+            )
+          }
         }
       }
     }
@@ -102,13 +114,13 @@ val totalBreaks = Array(6256, 6386, 6458, 6511, 6553, 6587, 6617, 6642, 6665, 66
               val zooms = metadataReader.layerNamesToZooms(layerName)
               val mid = zooms(zooms.length / 2)
 
-              val layer =
-                layerReader
-                  .query(LayerId(layerName, mid))
-                  .where(Between(time, time))
-                  .toRDD
-
               if(isLandsat(layerName)) {
+                val layer =
+                  readerSet.multiBandLayerReader
+                    .query(LayerId(layerName, mid))
+                    .where(Between(time, time))
+                    .toRDD
+
                 // Find the min/max
                 // val (min, max) =
                 // layerReader
@@ -184,9 +196,7 @@ val totalBreaks = Array(6256, 6386, 6458, 6511, 6553, 6587, 6617, 6642, 6665, 66
                     histo.getQuantileBreaks(256)
                 }
               } else {
-                layer
-                  .withContext { rdd => rdd.mapValues(_.band(1)) }
-                  .classBreaks(15)
+                metadataReader.readLayerAttribute[Array[Int]](layerName, "breaks")
               }
             }
           }
@@ -199,17 +209,19 @@ val totalBreaks = Array(6256, 6386, 6458, 6511, 6553, 6587, 6617, 6642, 6665, 66
         respondWithMediaType(MediaTypes.`image/png`) {
           complete {
             future {
-              val tileOpt =
-                try {
-                  Some(tileReader.read(LayerId(layer, zoom), SpaceTimeKey(x, y, time)))
-                } catch {
-                  case e: TileNotFoundError =>
-                    None
-                }
+              if(isLandsat(layer)) {
+                val tileOpt =
+                  readerSet.readMultiBandTile(layer, zoom, x, y, time)
+                  // try {
 
-              tileOpt.map { tile =>
-                val breaks = breaksStr.split(',').map(_.toInt)
-                if(isLandsat(layer)) {
+                  //   Some(readerSet.multiBandTileReader.read(LayerId(layer, zoom), SpaceTimeKey(x, y, time)))
+                  // } catch {
+                  //   case e: TileNotFoundError =>
+                  //     None
+                  // }
+
+                tileOpt.map { tile =>
+                  val breaks = breaksStr.split(',').map(_.toInt)
                   val png =
                     operationOpt match {
                       case Some (op) =>
@@ -226,9 +238,12 @@ val totalBreaks = Array(6256, 6386, 6458, 6511, 6553, 6587, 6617, 6642, 6665, 66
                     }
 
                   png.bytes
-                } else {
-                  ???
                 }
+              } else {
+                readerSet.readSingleBandTile(layer, zoom, x, y, time)
+                  .map { tile =>
+                    Render.temperature(tile, breaksStr.split(',').map(_.toInt)).bytes
+                  }
               }
             }
           }
@@ -252,7 +267,7 @@ val totalBreaks = Array(6256, 6386, 6458, 6511, 6553, 6587, 6617, 6642, 6665, 66
                   val time2 = DateTime.parse(time2Str, dateTimeFormat)
 
                   val rdd =
-                    layerReader
+                    readerSet.multiBandLayerReader
                       .query(LayerId(layerName, mid))
                       .where(Between(time1, time1) or Between(time2, time2))
                       .toRDD
@@ -295,27 +310,27 @@ val totalBreaks = Array(6256, 6386, 6458, 6511, 6553, 6587, 6617, 6642, 6665, 66
         respondWithMediaType(MediaTypes.`image/png`) {
           complete {
             future {
-              val tileOpt1 =
-                try {
-                  Some(tileReader.read(LayerId(layer, zoom), SpaceTimeKey(x, y, time1)))
-                } catch {
-                  case e: TileNotFoundError =>
-                    None
-                }
-
-              val tileOpt2 =
-                tileOpt1.flatMap { tile =>
+              if(isLandsat(layer)) {
+                val tileOpt1 =
                   try {
-                    Some((tile, tileReader.read(LayerId(layer, zoom), SpaceTimeKey(x, y, time1))))
+                    Some(readerSet.multiBandTileReader.read(LayerId(layer, zoom), SpaceTimeKey(x, y, time1)))
                   } catch {
                     case e: TileNotFoundError =>
                       None
                   }
-                }
 
-              tileOpt2.map { case (tile1, tile2) =>
-                val breaks = breaksStr.split(',').map(_.toInt)
-                if(isLandsat(layer)) {
+                val tileOpt2 =
+                  tileOpt1.flatMap { tile =>
+                    try {
+                      Some((tile, readerSet.multiBandTileReader.read(LayerId(layer, zoom), SpaceTimeKey(x, y, time1))))
+                    } catch {
+                      case e: TileNotFoundError =>
+                        None
+                    }
+                  }
+
+                tileOpt2.map { case (tile1, tile2) =>
+                  val breaks = breaksStr.split(',').map(_.toInt)
                   val png =
                     operationOpt match {
                       case Some (op) =>
@@ -332,9 +347,9 @@ val totalBreaks = Array(6256, 6386, 6458, 6511, 6553, 6587, 6617, 6642, 6665, 66
                     }
 
                   png.bytes
-                } else {
-                  ???
                 }
+              } else {
+                ???
               }
             }
           }

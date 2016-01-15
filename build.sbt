@@ -30,5 +30,4 @@ lazy val ingest = Project("ingest", file("ingest"))
   .settings(commonSettings: _*)
 
 lazy val server = Project("server", file("server"))
-  .dependsOn(ingest)
   .settings(commonSettings: _*)

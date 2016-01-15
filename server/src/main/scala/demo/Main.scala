@@ -58,50 +58,18 @@ object Main {
     implicit val sc = new SparkContext(conf)
     args(0) = "local"
     args(1) = "/Users/rob/proj/workshops/apple/data/landsat-catalog"
+//    args(1) = "/Users/rob/proj/workshops/apple/data/nex-catalog"
 
-    val (layerReader, tileReader, metadataReader) =
+    val readerSet =
       if(args(0) == "local") {
         val localCatalog = args(1)
-        val layerReader = FileLayerReader[SpaceTimeKey, MultiBandTile, RasterMetaData](localCatalog)
-        val tileReader = new CachingTileReader(FileTileReader[SpaceTimeKey, MultiBandTile](localCatalog))
-        val metadataReader =
-          new MetadataReader {
-            def initialRead(layer: LayerId) = {
-              val rmd = layerReader.attributeStore.readLayerAttributes[FileLayerHeader, RasterMetaData, KeyBounds[SpaceTimeKey], KeyIndex[SpaceTimeKey], Unit](layer)._2
-              val times = layerReader.attributeStore.read[Array[Long]](LayerId(layer.name, 0), "times")
-              LayerMetadata(rmd, times)
-            }
 
-            def layerNamesToZooms =
-              layerReader.attributeStore.layerIds
-                .groupBy(_.name)
-                .map { case (name, layerIds) => (name, layerIds.map(_.zoom).sorted.toArray) }
-                .toMap
-          }
-
-        (layerReader, tileReader, metadataReader)
+        new FileReaderSet(localCatalog)
       } else if(args(0) == "s3"){
         val bucket = args(1)
         val prefix = args(2)
 
-        val layerReader = S3LayerReader[SpaceTimeKey, MultiBandTile, RasterMetaData](bucket, prefix)
-        val tileReader = new CachingTileReader(S3TileReader[SpaceTimeKey, MultiBandTile](bucket, prefix))
-        val metadataReader =
-          new MetadataReader {
-            def initialRead(layer: LayerId) = {
-              val rmd = layerReader.attributeStore.readLayerAttributes[S3LayerHeader, RasterMetaData, KeyBounds[SpaceTimeKey], KeyIndex[SpaceTimeKey], Schema](layer)._2
-              val times = layerReader.attributeStore.read[Array[Long]](LayerId(layer.name, 0), "times")
-              LayerMetadata(rmd, times)
-            }
-
-            def layerNamesToZooms =
-              layerReader.attributeStore.layerIds
-                .groupBy(_.name)
-                .map { case (name, layerIds) => (name, layerIds.map(_.zoom).sorted.toArray) }
-                .toMap
-          }
-
-        (layerReader, tileReader, metadataReader)
+        new S3ReaderSet(bucket, prefix)
       } else if(args(0) == "accumulo") {
         val instanceName = args(1)
         val zooKeeper = args(2)
@@ -123,16 +91,20 @@ object Main {
                 .groupBy(_.name)
                 .map { case (name, layerIds) => (name, layerIds.map(_.zoom).sorted.toArray) }
                 .toMap
+
+            def readLayerAttribute[T: JsonFormat](layerName: String, attributeName: String): T =
+              layerReader.attributeStore.read[T](LayerId(layerName, 0), attributeName)
           }
 
-        (layerReader, tileReader, metadataReader)
+        //(layerReader, tileReader, metadataReader)
+        ???
       } else {
         sys.error(s"Unknown catalog type ${args(0)}")
       }
 
     // create and start our service actor
     val service =
-      system.actorOf(Props(classOf[DemoServiceActor], layerReader, tileReader, metadataReader, sc), "demo")
+      system.actorOf(Props(classOf[DemoServiceActor], readerSet, sc), "demo")
 
     // start a new HTTP server on port 8088 with our service actor as the handler
     IO(Http) ! Http.Bind(service, "0.0.0.0", 8088)

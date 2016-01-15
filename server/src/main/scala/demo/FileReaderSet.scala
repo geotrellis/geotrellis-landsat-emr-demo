@@ -12,6 +12,7 @@ import geotrellis.spark.io.avro.codecs._
 import org.apache.avro.Schema
 import org.apache.spark._
 
+import spray.json._
 import spray.json.DefaultJsonProtocol._
 
 class FileReaderSet(path: String)(implicit sc: SparkContext) extends ReaderSet {
@@ -30,6 +31,9 @@ class FileReaderSet(path: String)(implicit sc: SparkContext) extends ReaderSet {
           .groupBy(_.name)
           .map { case (name, layerIds) => (name, layerIds.map(_.zoom).sorted.toArray) }
           .toMap
+
+      def readLayerAttribute[T: JsonFormat](layerName: String, attributeName: String): T =
+        attributeStore.read[T](LayerId(layerName, 0), attributeName)
     }
 
   val singleBandLayerReader = FileLayerReader[SpaceTimeKey, Tile, RasterMetaData](attributeStore)

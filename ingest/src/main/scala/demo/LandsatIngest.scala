@@ -1,6 +1,7 @@
 package demo
 
 import geotrellis.raster._
+import geotrellis.raster.reproject._
 import geotrellis.raster.resample._
 import geotrellis.raster.io.geotiff._
 import geotrellis.spark._
@@ -23,12 +24,6 @@ import org.joda.time.Days
 
 import java.io._
 
-object TimeGridFunction extends Function1[DateTime, Int] with Serializable {
-  val startTime = new DateTime(2010, 1, 1, 0, 0)
-  def apply(dt: DateTime): Int =
-    Days.daysBetween(startTime, dt).getDays
-}
-
 object LandsatIngest {
   val catalogPath = "/Users/rob/proj/workshops/apple/data/landsat-catalog"
 
@@ -44,7 +39,7 @@ object LandsatIngest {
     implicit val sc = new SparkContext(conf)
 
     // Manually set bands
-    val bands = 
+    val bands =
       Array[String](
         // Red, Green, Blue
         "4", "3", "2",
@@ -59,16 +54,21 @@ object LandsatIngest {
 
     // Manually set the image directories
 
-    val images =
+    val phillyImages =
       Array[String](
-        "/Users/rob/proj/workshops/apple/data/flooding/batesville/LC80240352015292LGN00",
-        "/Users/rob/proj/workshops/apple/data/flooding/batesville/LC80240352015324LGN00",
         "/Users/rob/proj/workshops/apple/data/philly/LC80140322013152LGN00",
         "/Users/rob/proj/workshops/apple/data/philly/LC80140322014139LGN00"
       )
 
+    val batesvilleImages =
+      Array[String](
+        "/Users/rob/proj/workshops/apple/data/flooding/batesville/LC80240352015292LGN00",
+        "/Users/rob/proj/workshops/apple/data/flooding/batesville/LC80240352015324LGN00"
+      )
+
     try {
-      run(images, bands)
+      run("Philly-landsat", phillyImages, bands)
+      run("Batesville-landsat", batesvilleImages, bands)
       // Pause to wait to close the spark context,
       // so that you can check out the UI at http://localhost:4040
       println("Hit enter to exit.")
@@ -78,7 +78,7 @@ object LandsatIngest {
     }
   }
 
-  def fullPath(path: String) = new java.io.File(path).getAbsolutePath  
+  def fullPath(path: String) = new java.io.File(path).getAbsolutePath
 
   def findMTLFile(imagePath: String): String =
     new File(imagePath).listFiles(new WildcardFileFilter(s"*_MTL.txt"): FileFilter).toList match {
@@ -107,7 +107,7 @@ object LandsatIngest {
     (mtl, MultiBandGeoTiff(ArrayMultiBandTile(bandTiffs.map(_.tile)), bandTiffs.head.extent, bandTiffs.head.crs))
   }
 
-  def run(images: Array[String], bands: Array[String])(implicit sc: SparkContext): Unit = {
+  def run(layerName: String, images: Array[String], bands: Array[String])(implicit sc: SparkContext): Unit = {
     val targetLayoutScheme = ZoomedLayoutScheme(WebMercator, 256)
     // Create tiled RDDs for each
     val tileSets =
@@ -125,9 +125,9 @@ object LandsatIngest {
         val rdd = MultiBandRasterRDD(tiled, metadata)
 
         // Reproject to WebMercator
-        acc :+ rdd.reproject(targetLayoutScheme, Bilinear)
+        acc :+ rdd.reproject(targetLayoutScheme, bufferSize = 30, Reproject.Options(method = Bilinear, errorThreshold = 0))
       }
-    
+
     val zoom = tileSets.head._1
     val headRdd = tileSets.head._2
     val rdd = ContextRDD(
@@ -142,15 +142,13 @@ object LandsatIngest {
 
     // Write to the catalog
     val attributeStore = FileAttributeStore(catalogPath)
-    val writer = FileLayerWriter[SpaceTimeKey, MultiBandTile, RasterMetaData](attributeStore, ZCurveKeyIndexMethod.by(TimeGridFunction))
-    val layerName = "landsat"
+    val writer = FileLayerWriter[SpaceTimeKey, MultiBandTile, RasterMetaData](attributeStore, ZCurveKeyIndexMethod.byMillisecondResolution(1000 * 60 * 60 * 24))
 
-    Pyramid.upLevels(rdd, targetLayoutScheme, zoom) { (rdd, zoom) =>
-      writer.write(LayerId(layerName, zoom), rdd)
-      if(zoom == 0) {
-        // Write the temporal components as an attribute.
-        attributeStore.write(LayerId(layerName, 0), "times", rdd.map(_._1.instant).collect.toArray)
+    val lastRdd =
+      Pyramid.upLevels(rdd, targetLayoutScheme, zoom, Bilinear) { (rdd, zoom) =>
+        writer.write(LayerId(layerName, zoom), rdd)
       }
-    }
+
+    attributeStore.write(LayerId(layerName, 0), "times", lastRdd.map(_._1.instant).collect.toArray)
   }
 }
