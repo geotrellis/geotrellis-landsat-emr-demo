@@ -25,7 +25,7 @@ import org.joda.time.Days
 import java.io._
 
 object LandsatIngest {
-  val catalogPath = "/Users/rob/proj/workshops/apple/data/landsat-catalog"
+  val catalogPath = "/Volumes/Transcend/data/workshop/jan2016/data/landsat-catalog"
 
   def main(args: Array[String]): Unit = {
     // Setup Spark to use Kryo serializer.
@@ -56,19 +56,35 @@ object LandsatIngest {
 
     val phillyImages =
       Array[String](
-        "/Users/rob/proj/workshops/apple/data/philly/LC80140322013152LGN00",
-        "/Users/rob/proj/workshops/apple/data/philly/LC80140322014139LGN00"
+        "/Volumes/Transcend/data/workshop/jan2016/data/philly/LC80140322013152LGN00",
+        "/Volumes/Transcend/data/workshop/jan2016/data/philly/LC80140322014139LGN00"
+      )
+
+    val sfImages =
+      Array[String](
+        "/Volumes/Transcend/data/workshop/jan2016/data/drought/LC80440342013170LGN00",
+        "/Volumes/Transcend/data/workshop/jan2016/data/drought/LC80440342015176LGN00"
+      )
+
+    val vfImages =
+      Array[String](
+        "/Volumes/Transcend/data/workshop/jan2016/data/valleyfire/LC80450332015247LGN00",
+        "/Volumes/Transcend/data/workshop/jan2016/data/valleyfire/LC80450332015263LGN00"
       )
 
     val batesvilleImages =
       Array[String](
-        "/Users/rob/proj/workshops/apple/data/flooding/batesville/LC80240352015292LGN00",
-        "/Users/rob/proj/workshops/apple/data/flooding/batesville/LC80240352015324LGN00"
+        "/Volumes/Transcend/data/workshop/jan2016/data/flooding/batesville/LC80240352015292LGN00",
+        "/Volumes/Transcend/data/workshop/jan2016/data/flooding/batesville/LC80240352015324LGN00"
       )
 
     try {
-      run("Philly-landsat", phillyImages, bands)
-      run("Batesville-landsat", batesvilleImages, bands)
+      // run("Philly-landsat", phillyImages, bands)
+      // run("Batesville-landsat", batesvilleImages, bands)
+//      run("SanFrancisco-landsat", sfImages, bands)
+      run("ValleyFire-landsat", vfImages, bands)
+
+
       // Pause to wait to close the spark context,
       // so that you can check out the UI at http://localhost:4040
       println("Hit enter to exit.")
@@ -142,7 +158,7 @@ object LandsatIngest {
 
     // Write to the catalog
     val attributeStore = FileAttributeStore(catalogPath)
-    val writer = FileLayerWriter[SpaceTimeKey, MultiBandTile, RasterMetaData](attributeStore, ZCurveKeyIndexMethod.byMillisecondResolution(1000 * 60 * 60 * 24))
+    val writer = FileLayerWriter[SpaceTimeKey, MultiBandTile, RasterMetaData](attributeStore, ZCurveKeyIndexMethod.byMillisecondResolution(1000L * 60 * 60 * 24))
 
     val lastRdd =
       Pyramid.upLevels(rdd, targetLayoutScheme, zoom, Bilinear) { (rdd, zoom) =>

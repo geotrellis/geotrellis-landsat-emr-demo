@@ -20,6 +20,7 @@ import org.apache.avro.Schema
 
 import org.apache.accumulo.core.client.security.tokens._
 
+import com.github.nscala_time.time.Imports._
 import akka.actor._
 import akka.io.IO
 import spray.can.Http
@@ -36,7 +37,9 @@ import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 object Main {
-  val tilesPath = new java.io.File("data/tiles-wm").getAbsolutePath
+  val TEST = false
+
+  val dateTimeFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ")
 
   /** Usage:
     * First argument is catalog type. Others are dependant on the first argument.
@@ -46,8 +49,6 @@ object Main {
     * accumulo INSTANCE ZOOKEEPER USER PASSWORD
     */
   def main(args: Array[String]): Unit = {
-    implicit val system = akka.actor.ActorSystem("demo-system")
-
     val conf =
       new SparkConf()
         .setIfMissing("spark.master", "local[*]")
@@ -56,15 +57,20 @@ object Main {
         .set("spark.kryo.registrator", "geotrellis.spark.io.hadoop.KryoRegistrator")
 
     implicit val sc = new SparkContext(conf)
-    args(0) = "local"
-    args(1) = "/Users/rob/proj/workshops/apple/data/landsat-catalog"
-//    args(1) = "/Users/rob/proj/workshops/apple/data/nex-catalog"
 
     val readerSet =
       if(args(0) == "local") {
         val localCatalog = args(1)
 
         new FileReaderSet(localCatalog)
+      } else if(args(0) == "custom-local"){
+        val instanceName = "gis"
+        val zooKeeper = "localhost"
+        val user = "root"
+        val password = new PasswordToken("secret")
+        val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
+
+        new CustomAccumuloReaderSet(instance)
       } else if(args(0) == "s3"){
         val bucket = args(1)
         val prefix = args(2)
@@ -76,37 +82,35 @@ object Main {
         val user = args(3)
         val password = new PasswordToken(args(4))
         val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
-        val layerReader = AccumuloLayerReader[SpaceTimeKey, MultiBandTile, RasterMetaData](instance)
-        val tileReader = new CachingTileReader(AccumuloTileReader[SpaceTimeKey, MultiBandTile](instance))
-        val metadataReader =
-          new MetadataReader {
-            def initialRead(layer: LayerId) = {
-              val rmd = layerReader.attributeStore.readLayerAttributes[AccumuloLayerHeader, RasterMetaData, KeyBounds[SpaceTimeKey], KeyIndex[SpaceTimeKey], Schema](layer)._2
-              val times = layerReader.attributeStore.read[Array[Long]](LayerId(layer.name, 0), "times")
-              LayerMetadata(rmd, times)
-            }
 
-            def layerNamesToZooms =
-              layerReader.attributeStore.layerIds
-                .groupBy(_.name)
-                .map { case (name, layerIds) => (name, layerIds.map(_.zoom).sorted.toArray) }
-                .toMap
+        new AccumuloReaderSet(instance)
+      } else if(args(0) == "custom-accumulo") {
+        val instanceName = args(1)
+        val zooKeeper = args(2)
+        val user = args(3)
+        val password = new PasswordToken(args(4))
+        val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
 
-            def readLayerAttribute[T: JsonFormat](layerName: String, attributeName: String): T =
-              layerReader.attributeStore.read[T](LayerId(layerName, 0), attributeName)
-          }
-
-        //(layerReader, tileReader, metadataReader)
-        ???
+        new CustomAccumuloReaderSet(instance)
       } else {
         sys.error(s"Unknown catalog type ${args(0)}")
       }
 
-    // create and start our service actor
-    val service =
-      system.actorOf(Props(classOf[DemoServiceActor], readerSet, sc), "demo")
+    if(TEST) {
+      try {
+        RunTest(readerSet)
+      } finally {
+        sc.stop
+      }
+    } else {
+      implicit val system = akka.actor.ActorSystem("demo-system")
 
-    // start a new HTTP server on port 8088 with our service actor as the handler
-    IO(Http) ! Http.Bind(service, "0.0.0.0", 8088)
+      // create and start our service actor
+      val service =
+        system.actorOf(Props(classOf[DemoServiceActor], readerSet, sc), "demo")
+
+      // start a new HTTP server on port 8088 with our service actor as the handler
+      IO(Http) ! Http.Bind(service, "0.0.0.0", 8088)
+    }
   }
 }
