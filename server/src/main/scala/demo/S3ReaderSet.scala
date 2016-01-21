@@ -37,8 +37,8 @@ class S3ReaderSet(bucket: String, prefix: String)(implicit sc: SparkContext) ext
     }
 
   val singleBandLayerReader = S3LayerReader[SpaceTimeKey, Tile, RasterMetaData](attributeStore)
-  val singleBandTileReader = new CachingTileReader(S3TileReader[SpaceTimeKey, Tile](bucket, prefix))
+  val singleBandTileReader = new TileReader(S3TileReader[SpaceTimeKey, Tile](bucket, prefix))
 
   val multiBandLayerReader = S3LayerReader[SpaceTimeKey, MultiBandTile, RasterMetaData](attributeStore)
-  val multiBandTileReader = new CachingTileReader(S3TileReader[SpaceTimeKey, MultiBandTile](bucket, prefix))
+  val multiBandTileReader = new TileReader(S3TileReader[SpaceTimeKey, MultiBandTile](bucket, prefix))
 }

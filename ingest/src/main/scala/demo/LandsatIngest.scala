@@ -79,11 +79,10 @@ object LandsatIngest {
       )
 
     try {
-      // run("Philly-landsat", phillyImages, bands)
-      // run("Batesville-landsat", batesvilleImages, bands)
-//      run("SanFrancisco-landsat", sfImages, bands)
+      run("Philly-landsat", phillyImages, bands)
+      run("Batesville-landsat", batesvilleImages, bands)
+      run("SanFrancisco-landsat", sfImages, bands)
       run("ValleyFire-landsat", vfImages, bands)
-
 
       // Pause to wait to close the spark context,
       // so that you can check out the UI at http://localhost:4040
@@ -111,7 +110,7 @@ object LandsatIngest {
     }
 
   def readBands(imagePath: String, bands: Array[String]): (MTL, MultiBandGeoTiff) = {
-    // Read time
+    // Read time out of the metadata MTL file.
     val mtl = MTL(findMTLFile(imagePath))
 
     val bandTiffs =

@@ -37,8 +37,8 @@ class FileReaderSet(path: String)(implicit sc: SparkContext) extends ReaderSet {
     }
 
   val singleBandLayerReader = FileLayerReader[SpaceTimeKey, Tile, RasterMetaData](attributeStore)
-  val singleBandTileReader = new CachingTileReader(FileTileReader[SpaceTimeKey, Tile](path))
+  val singleBandTileReader = new TileReader(FileTileReader[SpaceTimeKey, Tile](path))
 
   val multiBandLayerReader = FileLayerReader[SpaceTimeKey, MultiBandTile, RasterMetaData](attributeStore)
-  val multiBandTileReader = new CachingTileReader(FileTileReader[SpaceTimeKey, MultiBandTile](path))
+  val multiBandTileReader = new TileReader(FileTileReader[SpaceTimeKey, MultiBandTile](path))
 }

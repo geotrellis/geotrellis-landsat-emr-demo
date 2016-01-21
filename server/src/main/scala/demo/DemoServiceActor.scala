@@ -61,8 +61,10 @@ class DemoServiceActor(
     pathPrefix("maxstate") { maxStateRoute } ~
     pathPrefix("maxaveragestate") { maxAverageStateRoute } ~
     pathPrefix("layerdiff") { layerDiffRoute } ~
+    pathPrefix("statediff") { stateDiffRoute } ~
     pathPrefix("state") { stateRoute }
 
+  /** Return a JSON representation of the catalog */
   def catalogRoute =
     cors {
       get {
@@ -104,6 +106,7 @@ class DemoServiceActor(
       }
     }
 
+  /** Find the breaks for one layer */
   def tilesRoute =
     path("breaks" / Segment) { (layerName) =>
       import spray.json.DefaultJsonProtocol._
@@ -116,53 +119,14 @@ class DemoServiceActor(
               val zooms = metadataReader.layerNamesToZooms(layerName)
               val mid = zooms(zooms.length / 2)
 
-              if(isLandsat(layerName)) {
-                val layer =
-                  readerSet.multiBandLayerReader
-                    .query(LayerId(layerName, mid))
-                    .where(Between(time, time))
-                    .toRDD
-
-                operationOpt match {
-                  case Some(operation) =>
-                    operation match {
-                      case "ndvi" =>
-                        layer
-                          .withContext(_.mapValues { tile => NDVI(tile) * 1000 })
-                          .classBreaks(15)
-                      case "ndwi" =>
-                        layer
-                          .withContext(_.mapValues { tile => NDWI(tile) * 1000 })
-                          .classBreaks(15)
-                      case _ =>
-                        sys.error(s"UNKNOWN OPERATION $operation")
-                    }
-                  case None =>
-                    val ((rmin, rmax), (gmin, gmax), (bmin, bmax)) =
-                      layer
-                        .map { case (_, tile) =>
-                          (tile.band(0).findMinMax, tile.band(1).findMinMax, tile.band(2).findMinMax)
-                        }
-                        .reduce { case (((rmin1, rmax1), (gmin1, gmax1), (bmin1, bmax1)),
-                                        ((rmin2, rmax2), (gmin2, gmax2), (bmin2, bmax2))) =>
-                          (
-                            (math.min(rmin1, rmin2), math.max(rmax1, rmax2)),
-                            (math.min(gmin1, gmin2), math.max(gmax1, gmax2)),
-                            (math.min(bmin1, bmin2), math.max(bmax1, bmax2))
-                          )
-                        }
-                    Array(Seq(rmax, gmax, bmax).max)
-                }
-              } else {
-                metadataReader.readLayerAttribute[Array[Int]](layerName, "breaks")
-              }
+              metadataReader.readLayerAttribute[Array[Int]](layerName, "breaks")
             }
           }
         }
       }
     } ~
     pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layer, zoom, x, y) =>
-      parameters('time, 'breaks, 'operation ?) { (timeString, breaksStr, operationOpt) =>
+      parameters('time, 'breaks ?, 'operation ?) { (timeString, breaksStrOpt, operationOpt) =>
         val time = DateTime.parse(timeString, dateTimeFormat)
         respondWithMediaType(MediaTypes.`image/png`) {
           complete {
@@ -172,20 +136,19 @@ class DemoServiceActor(
                   readerSet.readMultiBandTile(layer, zoom, x, y, time)
 
                 tileOpt.map { tile =>
-                  val breaks = breaksStr.split(',').map(_.toInt)
                   val png =
                     operationOpt match {
                       case Some (op) =>
                         op match {
                           case "ndvi" =>
-                            Render.ndvi(tile, breaks)
+                            Render.ndvi(tile)
                           case "ndwi" =>
-                            Render.ndwi(tile, breaks)
+                            Render.ndwi(tile)
                           case _ =>
                             sys.error(s"UNKNOWN OPERATION $op")
                         }
                       case None =>
-                        Render.image(tile, breaks)
+                        Render.image(tile)
                     }
 
                   png.bytes
@@ -193,7 +156,8 @@ class DemoServiceActor(
               } else {
                 readerSet.readSingleBandTile(layer, zoom, x, y, time)
                   .map { tile =>
-                    Render.temperature(tile, breaksStr.split(',').map(_.toInt)).bytes
+                    val breaks = breaksStrOpt.get.split(',').map(_.toInt)
+                    Render.temperature(tile, breaks).bytes
                   }
               }
             }
@@ -211,37 +175,33 @@ class DemoServiceActor(
           parameters('time1, 'time2, 'operation ?) { (time1Str, time2Str, operationOpt) =>
             complete {
               future {
-                if(isLandsat(layerName)) {
-                  Array[Int](0) // We don't calculate breaks for landsat diffs
-                } else {
-                  val zooms = metadataReader.layerNamesToZooms(layerName)
-                  val mid = zooms(zooms.length / 2)
-                  val time1 = DateTime.parse(time1Str, dateTimeFormat)
-                  val time2 = DateTime.parse(time2Str, dateTimeFormat)
+                val zooms = metadataReader.layerNamesToZooms(layerName)
+                val mid = zooms(zooms.length / 2)
+                val time1 = DateTime.parse(time1Str, dateTimeFormat)
+                val time2 = DateTime.parse(time2Str, dateTimeFormat)
 
-                  readerSet.singleBandLayerReader
-                    .query(LayerId(layerName, mid))
-                    .where(Between(time1, time1))
-                    .toRDD
-                    .withContext { rdd =>
-                      rdd.union(
-                        readerSet.singleBandLayerReader
-                          .query(LayerId(layerName, mid))
-                          .where(Between(time2, time2))
-                          .toRDD
-                      )
-                    }.map { case (key, tile) => (key.spatialComponent, (key, tile)) }
-                    .reduceByKey { case ((key1, tile1), (key2, tile2)) =>
-                      val tile =
-                        if(key1.instant == time1.instant) { tile1 - tile2 }
-                        else { tile2 - tile1 }
+                readerSet.singleBandLayerReader
+                  .query(LayerId(layerName, mid))
+                  .where(Between(time1, time1))
+                  .toRDD
+                  .withContext { rdd =>
+                    rdd.union(
+                      readerSet.singleBandLayerReader
+                        .query(LayerId(layerName, mid))
+                        .where(Between(time2, time2))
+                        .toRDD
+                    )
+                  }.map { case (key, tile) => (key.spatialComponent, (key, tile)) }
+                  .reduceByKey { case ((key1, tile1), (key2, tile2)) =>
+                    val tile =
+                      if(key1.instant == time1.instant) { tile1 - tile2 }
+                      else { tile2 - tile1 }
 
-                      (key1, tile)
-                    }
-                    .map { case (_, (_, tile)) => tile.histogram }
-                    .reduce { (h1, h2) => FastMapHistogram.fromHistograms(Array(h1, h2)) }
-                    .getQuantileBreaks(15)
-                }
+                    (key1, tile)
+                  }
+                  .map { case (_, (_, tile)) => tile.histogram }
+                  .reduce { (h1, h2) => FastMapHistogram.fromHistograms(Array(h1, h2)) }
+                  .getQuantileBreaks(15)
               }
             }
           }
@@ -249,10 +209,9 @@ class DemoServiceActor(
       }
     } ~
     pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layer, zoom, x, y) =>
-      parameters('time1, 'time2, 'breaks, 'operation ?) { (timeString1, timeString2, breaksStr, operationOpt) =>
+      parameters('time1, 'time2, 'breaks ?, 'operation ?) { (timeString1, timeString2, breaksStrOpt, operationOpt) =>
         val time1 = DateTime.parse(timeString1, dateTimeFormat)
         val time2 = DateTime.parse(timeString2, dateTimeFormat)
-        val breaks = breaksStr.split(',').map(_.toInt)
         respondWithMediaType(MediaTypes.`image/png`) {
           complete {
             future {
@@ -271,9 +230,9 @@ class DemoServiceActor(
                       case Some (op) =>
                         op match {
                           case "ndvi" =>
-                            Render.ndvi(tile1, tile2, breaks)
+                            Render.ndvi(tile1, tile2)
                           case "ndwi" =>
-                            Render.ndwi(tile1, tile2, breaks)
+                            Render.ndwi(tile1, tile2)
                           case _ =>
                             sys.error(s"UNKNOWN OPERATION $op")
                         }
@@ -293,6 +252,7 @@ class DemoServiceActor(
                   }
 
                 tileOpt2.map { case (tile1, tile2) =>
+                  val breaks = breaksStrOpt.get.split(',').map(_.toInt)
                   val diffTile = tile1 - tile2
                   Render.temperatureDiff(diffTile, breaks).bytes
                 }
@@ -577,7 +537,7 @@ class DemoServiceActor(
                   val data =
                     JsObject(
                       "name" -> JsString(state.data.name),
-                      "Mean Temperature" -> JsNumber(maxMean)
+                      "Mean Temperature" -> JsNumber(f"${maxMean}%.2f".toDouble)
                     )
 
                   Some(state.mapData { d => data })
@@ -642,4 +602,134 @@ class DemoServiceActor(
       }
     }
 
+  def stateDiffRoute =
+    path("breaks" / Segment / Segment / Segment) { (stateName, layerName1, layerName2) =>
+      import spray.json.DefaultJsonProtocol._
+      cors {
+        get {
+          parameters('time1, 'time2) { (time1Str, time2Str) =>
+            complete {
+              future {
+                val state = statesByName(stateName)
+                val zooms = metadataReader.layerNamesToZooms(layerName1)
+                val mid = zooms(zooms.length / 2)
+                val time1 = DateTime.parse(time1Str, dateTimeFormat)
+                val time2 = DateTime.parse(time2Str, dateTimeFormat)
+
+                readerSet.singleBandLayerReader
+                  .query(LayerId(layerName1, mid))
+                  .where(Between(time1, time1))
+                  .where(Intersects(state.geom))
+                  .toRDD
+                  .withContext { rdd =>
+                    rdd.union(
+                      readerSet.singleBandLayerReader
+                        .query(LayerId(layerName2, mid))
+                        .where(Between(time2, time2))
+                        .where(Intersects(state.geom))
+                        .toRDD
+                    )
+                  }
+                  .map { case (key, tile) => (key.spatialComponent, (key, tile)) }
+                  .reduceByKey { case ((key1, tile1), (key2, tile2)) =>
+                    val tile =
+                      if(key1.instant == time1.getMillis) { tile1 - tile2 }
+                      else { tile2 - tile1 }
+
+                    (key1, tile)
+                  }
+                  .map { case (_, (_, tile)) => tile.histogram }
+                  .reduce { (h1, h2) => FastMapHistogram.fromHistograms(Array(h1, h2)) }
+                  .getQuantileBreaks(15)
+              }
+            }
+          }
+        }
+      }
+    } ~
+    pathPrefix("tiles" / Segment / Segment / Segment / IntNumber / IntNumber / IntNumber) { (stateName, layer1, layer2, zoom, x, y) =>
+      parameters('time1, 'time2, 'breaks) { (timeString1, timeString2, breaksStr) =>
+        val time1 = DateTime.parse(timeString1, dateTimeFormat)
+        val time2 = DateTime.parse(timeString2, dateTimeFormat)
+        val breaks = breaksStr.split(',').map(_.toInt)
+        val state = statesByName(stateName)
+        val metadata1 = metadataReader.read(LayerId(layer1, zoom))
+        val extent1 =
+          metadata1.rasterMetaData.mapTransform(SpatialKey(x, y))
+
+        val metadata2 = metadataReader.read(LayerId(layer2, zoom))
+        val extent2 =
+          metadata2.rasterMetaData.mapTransform(SpatialKey(x, y))
+
+        respondWithMediaType(MediaTypes.`image/png`) {
+          complete {
+            future {
+              val tileOpt1 =
+                readerSet.readSingleBandTile(layer1, zoom, x, y, time1)
+
+              val tileOpt2 =
+                tileOpt1.flatMap { tile1 =>
+                  readerSet.readSingleBandTile(layer2, zoom, x, y, time2).map { tile2 => (tile1, tile2) }
+                }
+
+              tileOpt2.map { case (tile1, tile2) =>
+                val diffTile = tile1.mask(extent1, state.geom) - tile2.mask(extent2, state.geom)
+                Render.temperatureDiff(diffTile, breaks).bytes
+              }
+            }
+          }
+        }
+      }
+    } ~
+    pathPrefix("average" / Segment / Segment /Segment) { (stateName, layer1, layer2) =>
+      import spray.json.DefaultJsonProtocol._
+      cors {
+        parameters('time1, 'time2) { (time1String, time2String) =>
+          val time1 = DateTime.parse(time1String, dateTimeFormat)
+          val time2 = DateTime.parse(time2String, dateTimeFormat)
+          complete {
+            future {
+              val state = statesByName(stateName)
+              val zoom = metadataReader.layerNamesToMaxZooms(layer1) - 1
+
+              val mean =
+                readerSet.singleBandLayerReader
+                  .query(LayerId(layer1, zoom))
+                  .where(Between(time1, time1))
+                  .where(Intersects(state.geom))
+                  .toRDD
+                  .withContext { rdd =>
+                    rdd.union(
+                      readerSet.singleBandLayerReader
+                        .query(LayerId(layer2, zoom))
+                        .where(Between(time2, time2))
+                        .where(Intersects(state.geom))
+                        .toRDD
+                    )
+                    .map { case (key, tile) => (key.spatialComponent, (key, tile)) }
+                    .groupByKey
+                    .mapValues { tiles =>
+                      val Seq((key1, tile1), (key2, tile2)) = tiles
+                      val tile =
+                        if(key1.instant == time1.getMillis) { tile1 - tile2 }
+                        else { tile2 - tile1 }
+
+                      tile
+                    }
+                  }
+                  .zonalMean(state)
+
+              state
+                .mapGeom(geom => geom.reproject(WebMercator, LatLng))
+                .mapData { d =>
+                  JsObject(
+                    "name" -> JsString(d.name),
+                    "meanTemp" -> JsNumber(f"${mean}%.2f".toDouble)
+                  )
+                }
+            }
+          }
+        }
+      }
+    }
 }

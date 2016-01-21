@@ -36,6 +36,7 @@ import java.io.File
 object NEXIngest {
   val catalogPath = "/Volumes/Transcend/data/workshop/jan2016/data/nex-catalog"
   val targetLayoutScheme = ZoomedLayoutScheme(WebMercator, 256)
+
   // Index by every 1 month
   val indexMethod = ZCurveKeyIndexMethod.byMillisecondResolution(1000L * 60 * 60 * 24 * 30)
 
@@ -152,6 +153,7 @@ object NEXIngest {
         }
       }
 
+    // Store the key times so that we can know what time slices we can get out of this layer.
     attributeStore.write(LayerId(layerName, 0), "times", lastRdd.map(_._1.instant).collect.toArray)
   }
 
@@ -163,12 +165,18 @@ object NEXIngest {
     SpaceTimeGeoTiffS3InputFormat.setTimeTag(conf, "ISO_TIME")
     SpaceTimeGeoTiffS3InputFormat.setTimeFormat(conf, "yyyy-MM-dd'T'HH:mm:ss")
 
-    sc.newAPIHadoopRDD(
-      conf,
-      classOf[SpaceTimeGeoTiffS3InputFormat],
-      classOf[SpaceTimeInputKey],
-      classOf[Tile]
-    ).repartition(4000)
+    val tiles =
+      sc.newAPIHadoopRDD(
+        conf,
+        classOf[SpaceTimeGeoTiffS3InputFormat],
+        classOf[SpaceTimeInputKey],
+        classOf[Tile]
+      )
+
+    // Force a repartition, since Spark isn't very used
+    // to data this large and can end up throwing OutOfMemory errors
+    // if the partitions start too big.
+    tiles.repartition(4000)
   }
 
   def runAccumulo(layerName: String, bucket: String, prefix: String)(implicit sc: SparkContext): Unit = {
@@ -225,7 +233,6 @@ object NEXIngest {
 
     val instance = AccumuloInstance("gis", "localhost", "root", new PasswordToken("secret"))
     val writer = new CustomAccumuloLayerWriter[Tile, RasterMetaData](instance, "test_custom")
-//    val writer = AccumuloLayerWriter[SpaceTimeKey, Tile, RasterMetaData](instance, "test_custom", ZCurveKeyIndexMethod.byYear)
 
     processSourceTiles(layerName, sourceTiles, writer.attributeStore, writer, Some(100))
   }

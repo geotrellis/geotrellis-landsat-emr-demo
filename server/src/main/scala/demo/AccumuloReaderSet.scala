@@ -37,8 +37,8 @@ class AccumuloReaderSet(instance: AccumuloInstance)(implicit sc: SparkContext) e
     }
 
   val singleBandLayerReader = AccumuloLayerReader[SpaceTimeKey, Tile, RasterMetaData](instance)
-  val singleBandTileReader = new CachingTileReader(AccumuloTileReader[SpaceTimeKey, Tile](instance))
+  val singleBandTileReader = new TileReader(AccumuloTileReader[SpaceTimeKey, Tile](instance))
 
   val multiBandLayerReader = AccumuloLayerReader[SpaceTimeKey, MultiBandTile, RasterMetaData](instance)
-  val multiBandTileReader = new CachingTileReader(AccumuloTileReader[SpaceTimeKey, MultiBandTile](instance))
+  val multiBandTileReader = new TileReader(AccumuloTileReader[SpaceTimeKey, MultiBandTile](instance))
 }

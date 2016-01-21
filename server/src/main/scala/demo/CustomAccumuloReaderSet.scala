@@ -37,8 +37,8 @@ class CustomAccumuloReaderSet(instance: AccumuloInstance)(implicit sc: SparkCont
     }
 
   val singleBandLayerReader = new CustomAccumuloLayerReader[Tile, RasterMetaData](instance)
-  val singleBandTileReader = new CachingTileReader(new CustomAccumuloTileReader[Tile](instance))
+  val singleBandTileReader = new TileReader(new CustomAccumuloTileReader[Tile](instance))
 
   val multiBandLayerReader = new CustomAccumuloLayerReader[MultiBandTile, RasterMetaData](instance)
-  val multiBandTileReader = new CachingTileReader(new CustomAccumuloTileReader[MultiBandTile](instance))
+  val multiBandTileReader = new TileReader(new CustomAccumuloTileReader[MultiBandTile](instance))
 }

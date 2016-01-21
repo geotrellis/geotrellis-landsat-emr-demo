@@ -1,19 +1,23 @@
-http://ec2-54-183-191-215.us-west-1.compute.amazonaws.com:8088
-http://ec2-54-183-191-215.us-west-1.compute.amazonaws.com:4040
+http://ec2-52-53-232-9.us-west-1.compute.amazonaws.com:8088
 
-http://ec2-54-183-191-215.us-west-1.compute.amazonaws.com:50095
+# Spark
+
+http://ec2-52-53-232-9.us-west-1.compute.amazonaws.com:4040
 
 # Accumulo
-http://ec2-54-183-191-215.us-west-1.compute.amazonaws.com:50095
+http://ec2-52-53-232-9.us-west-1.compute.amazonaws.com:50095
 
 # HDFS
-http://ec2-54-183-191-215.us-west-1.compute.amazonaws.com:50070
+http://ec2-52-53-232-9.us-west-1.compute.amazonaws.com:50070
 
 # Mesos
-http://ec2-54-183-191-215.us-west-1.compute.amazonaws.com:5050
+http://ec2-52-53-232-9.us-west-1.compute.amazonaws.com:5050
+
+# Marathon
+http://ec2-52-53-232-9.us-west-1.compute.amazonaws.com:8080
 
 # Grafana
-http://ec2-54-183-191-215.us-west-1.compute.amazonaws.com:8090
+http://ec2-52-53-232-9.us-west-1.compute.amazonaws.com:8090
 
 # Build server
 export SPRAY_VERSION=1.2.3
@@ -26,25 +30,34 @@ export SPRAY_VERSION=1.3.3
 # copy up server
 scp -i ~/.keys/geotrellis-climate-us-west-1.pem \
   /Users/rob/proj/workshops/2016-01/demo/server/target/scala-2.10/server-assembly-0.1.0.jar \
-  ubuntu@ec2-54-183-191-215.us-west-1.compute.amazonaws.com:/home/ubuntu/
+  ubuntu@ec2-52-53-232-9.us-west-1.compute.amazonaws.com:/home/ubuntu/
 
 # copy up ingest
 
 scp -i ~/.keys/geotrellis-climate-us-west-1.pem \
   /Users/rob/proj/workshops/2016-01/demo/ingest/target/scala-2.10/ingest-assembly-0.1.0.jar \
-  ubuntu@ec2-54-183-191-215.us-west-1.compute.amazonaws.com:/home/ubuntu/
+  ubuntu@ec2-52-53-232-9.us-west-1.compute.amazonaws.com:/home/ubuntu/
 
 
 run local /Volumes/Transcend/data/workshop/jan2016/data/landsat-catalog
 reStart local /Volumes/Transcend/data/workshop/jan2016/data/landsat-catalog
 
 # ssh master
-ssh -i ~/.keys/geotrellis-climate-us-west-1.pem ubuntu@ec2-54-183-191-215.us-west-1.compute.amazonaws.com
+ssh -i ~/.keys/geotrellis-climate-us-west-1.pem ubuntu@ec2-52-53-232-9.us-west-1.compute.amazonaws.com
+
+# Delete metadta
+deleterows -b RCP45-Temperature-Min__._ -e RCP45-Temperature-Min__.__8
+rellis.spark.io.package$AttributeNotFoundError: Attribute times not found for layer Layer(name = "RCP45-Temperature-Min", zoom = 0)
+
 
 # Start the shuffle service 7337
 sudo /usr/lib/spark/sbin/start-mesos-shuffle-service.sh
 sudo /usr/lib/spark/sbin/stop-mesos-shuffle-service.sh
 [["hostname", "UNIQUE"]]
+
+# job to kill shuffle files
+sudo rm -rf /media/ephemeral0/blockmgr-*
+sudo rm -rf /media/ephemeral1/blockmgr-*
 
 
 # Run Ingest Accumulo with shuffle service
@@ -86,6 +99,9 @@ spark-submit \
 ingest-assembly-0.1.0.jar \
 custom-accumulo \
 1
+
+
+# Run local ingest
 
 
 <!-- # Run Ingest Accumulo -->

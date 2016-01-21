@@ -1,6 +1,5 @@
 name := "ingest"
 
-// We need to bump up the memory for some of the examples working with the landsat image.
 javaOptions += "-Xmx8G"
 
 fork in run := true

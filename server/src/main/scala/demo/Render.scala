@@ -29,46 +29,29 @@ object Render {
   def temperatureDiff(tile: Tile, breaks: Array[Int]): Png =
     tile.renderPng(tempDiffColorBreaks)
 
-  def image(tile: MultiBandTile, breaks: Array[Int]): Png = {
-                // val tile = tileReader.read(LayerId(layer, zoom), SpaceTimeKey(x, y, time))
-                // val red = tile.band(0).convert(TypeInt).map(z => if(z == 0) NODATA else z).color(ColorBreaks(totalBreaks, (0 until 256).toArray))
-                // val green = tile.band(1).convert(TypeInt).map(z => if(z == 0) NODATA else z).color(ColorBreaks(totalBreaks, (0 until 256).toArray))
-                // val blue = tile.band(2).convert(TypeInt).map(z => if(z == 0) NODATA else z).color(ColorBreaks(totalBreaks, (0 until 256).toArray))
-                // ArrayMultiBandTile(red, green, blue).renderPng.bytes
+  def image(tile: MultiBandTile): Png = {
+    val (red, green, blue) =
+    if(tile.cellType == TypeUShort) {
+      // Landsat
 
-                // val tile = tileReader.read(LayerId(layer, zoom), SpaceTimeKey(x, y, time))
-                // val red = tile.band(0).convert(TypeInt).map(z => if(z == 0) NODATA else z).color(ColorBreaks(redBreaks, (0 until 256).toArray))
-                // val green = tile.band(1).convert(TypeInt).map(z => if(z == 0) NODATA else z).color(ColorBreaks(greenBreaks, (0 until 256).toArray))
-                // val blue = tile.band(2).convert(TypeInt).map(z => if(z == 0) NODATA else z).color(ColorBreaks(blueBreaks, (0 until 256).toArray))
-                // ArrayMultiBandTile(red, green, blue).renderPng.bytes
+      // magic numbers. Fiddled with until visually it looked ok. ¯\_(ツ)_/¯
+      val (min, max) = (4000, 15176)
 
-    // val (min, max) = (0, math.max(math.max(tile.band(0).findMinMax._2, tile.band(1).findMinMax._2), tile.band(2).findMinMax._2))//(4000, 15176)
-    val (min, max) = (4000, 15176)
-
-    // val red = tile.band(0).convert(TypeInt).map(z => if(z == 0) NODATA else (z.toDouble * 1.5).toInt).normalize(min, max, 0, 255)
-    // val green = tile.band(1).convert(TypeInt).map(z => if(z == 0) NODATA else (z.toDouble * 1.5).toInt).normalize(min, max, 0, 255)
-    // val blue = tile.band(2).convert(TypeInt).map(z => if(z == 0) NODATA else (z.toDouble * 1.5).toInt).normalize(min, max, 0, 255)
-    def clamp(z: Int) = {
-      if(isData(z)) { if(z > max) { max } else if(z < min) { min } else { z } }
-      else { z }
+      def clamp(z: Int) = {
+        if(isData(z)) { if(z > max) { max } else if(z < min) { min } else { z } }
+        else { z }
+      }
+      val red = tile.band(0).convert(TypeInt).map(clamp _).normalize(min, max, 0, 255)
+      val green = tile.band(1).convert(TypeInt).map(clamp _).normalize(min, max, 0, 255)
+      val blue = tile.band(2).convert(TypeInt).map(clamp _).normalize(min, max, 0, 255)
+      (red, green, blue)
+    } else {
+      // Planet Labs
+      (tile.band(0).combine(tile.band(3)) { (z, m) => if(m == 0) 0 else z },
+       tile.band(1).combine(tile.band(3)) { (z, m) => if(m == 0) 0 else z },
+       tile.band(2).combine(tile.band(3)) { (z, m) => if(m == 0) 0 else z })
     }
-    val red = tile.band(0).convert(TypeInt).map(clamp _).normalize(min, max, 0, 255)
-    val green = tile.band(1).convert(TypeInt).map(clamp _).normalize(min, max, 0, 255)
-    val blue = tile.band(2).convert(TypeInt).map(clamp _).normalize(min, max, 0, 255)
 
-//    val Array(rmin, rmax, gmin, gmax, bmin, bmax) = breaks
-
-    // val red = tile.band(0).convert(TypeInt).map(z => if(z == 0) NODATA else z).normalize(rmim, rmax, 0, 255)
-    // val green = tile.band(1).convert(TypeInt).map(z => if(z == 0) NODATA else z).normalize(gmin, gmax, 0, 255)
-    // val blue = tile.band(2).convert(TypeInt).map(z => if(z == 0) NODATA else z).normalize(bmin, bmax, 0, 255)
-
-    // val Array(max) = breaks
-
-    // val red = tile.band(0).convert(TypeInt).map(z => if(z == 0) NODATA else z).normalize(0, 65535, 0, 255)
-    // val green = tile.band(1).convert(TypeInt).map(z => if(z == 0) NODATA else z).normalize(0, 65535, 0, 255)
-    // val blue = tile.band(2).convert(TypeInt).map(z => if(z == 0) NODATA else z).normalize(0, 65535, 0, 255)
-
-    val bypass = false
 
     def clampColor(c: Int): Int =
       if(isNoData(c)) { c }
@@ -79,29 +62,29 @@ object Render {
       }
 
     // -255 to 255
-    val brightness = 30
+    val brightness = 15
     def brightnessCorrect(v: Int): Int =
       if(v > 0) { v + brightness }
       else { v }
 
     // 0.01 to 7.99
-    val gamma = 0.7
+    val gamma = 0.8
     val gammaCorrection = 1 / gamma
     def gammaCorrect(v: Int): Int =
       (255 * math.pow(v / 255.0, gammaCorrection)).toInt
 
     // -255 to 255
-    val contrast = 85
+    val contrast: Double = 30.0
     val contrastFactor = (259 * (contrast + 255)) / (255 * (259 - contrast))
     def contrastCorrect(v: Int): Int =
-      (contrastFactor * (v - 128)) + 128
+      ((contrastFactor * (v - 128)) + 128).toInt
 
     def adjust(c: Int): Int = {
-      if(isData(c) && !bypass) {
+      if(isData(c)) {
         var cc = c
+        cc = clampColor(brightnessCorrect(cc))
         cc = clampColor(gammaCorrect(cc))
         cc = clampColor(contrastCorrect(cc))
-        cc = clampColor(brightnessCorrect(cc))
         cc
       } else {
         c
@@ -115,24 +98,15 @@ object Render {
     ArrayMultiBandTile(adjRed, adjGreen, adjBlue).renderPng
   }
 
-  def ndvi(tile: MultiBandTile, breaks: Array[Int]): Png =
+  def ndvi(tile: MultiBandTile): Png =
     NDVI(tile).renderPng(ndviColorBreaks)
 
-  def ndvi(tile1: MultiBandTile, tile2: MultiBandTile, breaks: Array[Int]): Png = {
-    val ramp = ColorRamp(ndviColorBreaks.colors)
-    val cb = ColorBreaks(breaks, ramp.interpolate(breaks.length).colors.toArray)
-
+  def ndvi(tile1: MultiBandTile, tile2: MultiBandTile): Png =
     (NDVI(tile1) - NDVI(tile2)).renderPng(ndviDiffColorBreaks)
-  }
 
-  def ndwi(tile: MultiBandTile, breaks: Array[Int]): Png =
+  def ndwi(tile: MultiBandTile): Png =
     NDWI(tile).renderPng(ndwiColorBreaks)
 
-  def ndwi(tile1: MultiBandTile, tile2: MultiBandTile, breaks: Array[Int]): Png = {
-    val ramp = ColorRamp(ndwiColorBreaks.colors)
-    val cb = ColorBreaks(breaks, ramp.interpolate(breaks.length).colors.toArray)
-
+  def ndwi(tile1: MultiBandTile, tile2: MultiBandTile): Png =
     (NDWI(tile1) - NDWI(tile2)).renderPng(waterDiffColorBreaks)
-  }
-
 }

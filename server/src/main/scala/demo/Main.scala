@@ -37,6 +37,7 @@ import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 object Main {
+  /** Allows an alternate execution path to run some testing */
   val TEST = false
 
   val dateTimeFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ")
