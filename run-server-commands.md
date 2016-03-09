@@ -1,3 +1,5 @@
+http://2.bp.blogspot.com/-LYSxuR8jb10/UPA0wXpryUI/AAAAAAAAEeU/kVZcqtfBIgQ/s1600/Screen+shot+2013-01-11+at+10.49.34+AM.png
+
 http://ec2-52-53-232-9.us-west-1.compute.amazonaws.com:8088
 
 # Spark
@@ -120,7 +122,7 @@ custom-accumulo \
 
 ## Accumulo shell
 
-config -t tiles -s table.split.threshold=200M
+config -t tiles -s table.split.threshold=128M
 compact -t tiles
 
 
@@ -258,6 +260,17 @@ accumulo
 spark-shell \
 --master mesos://zk://zookeeper.service.geotrellis-spark.internal:2181/mesos \
 --jars demo-assembly-0.1.0.jar
+
+## Shell with thing set
+
+spark-submit \
+--master mesos://zk://zookeeper.service.geotrellis-spark.internal:2181/mesos \
+--conf spark.executorEnv.SPARK_LOCAL_DIRS="/media/ephemeral0,/media/ephemeral1" \
+--conf spark.driver.cores=4 \
+--conf spark.driver.memory=4g \
+--conf spark.executor.memory=12g \
+--conf spark.mesos.coarse=true
+
 
 ## local
 

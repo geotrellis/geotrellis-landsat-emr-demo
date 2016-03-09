@@ -1,16 +1,17 @@
 package demo
 
 import geotrellis.raster._
-import geotrellis.raster.op.local._
+import geotrellis.raster.mapalgebra.local._
 import geotrellis.raster.io.geotiff._
 import geotrellis.raster.render._
 import geotrellis.raster.resample._
-import geotrellis.raster.op.stats._
+import geotrellis.raster.summary._
+import geotrellis.raster.summary.polygonal._
 import geotrellis.raster.histogram._
 import geotrellis.spark._
 import geotrellis.spark.io._
-import geotrellis.spark.op.stats._
-import geotrellis.spark.op.zonal.summary._
+import geotrellis.spark.summary._
+import geotrellis.spark.summary.polygonal._
 import geotrellis.spark.tiling._
 import geotrellis.vector._
 import geotrellis.vector.io.json._
@@ -83,8 +84,8 @@ class DemoServiceActor(
                   val times =
                     metadata.times
                       .map { instant =>
-                      dateTimeFormat.print(new DateTime(instant, DateTimeZone.forOffsetHours(-4)))
-                    }
+                        dateTimeFormat.print(new DateTime(instant, DateTimeZone.forOffsetHours(-4)))
+                      }
                   (name, extent, times.sorted)
                 }
 
@@ -110,7 +111,7 @@ class DemoServiceActor(
   def tilesRoute =
     path("breaks" / Segment) { (layerName) =>
       import spray.json.DefaultJsonProtocol._
-      parameters('time, 'operation ?) { (timeString, operationOpt) =>
+      parameters('time) { (timeString) =>
 
         val time = DateTime.parse(timeString, dateTimeFormat)
         cors {
@@ -166,6 +167,9 @@ class DemoServiceActor(
       }
     }
 
+  def operateOnTwoTiles(t1: Tile, t2: Tile): Tile = {
+    t1 - t2
+  }
 
   def diffRoute =
     path("breaks" / Segment) { (layerName) =>
@@ -194,8 +198,12 @@ class DemoServiceActor(
                   }.map { case (key, tile) => (key.spatialComponent, (key, tile)) }
                   .reduceByKey { case ((key1, tile1), (key2, tile2)) =>
                     val tile =
-                      if(key1.instant == time1.instant) { tile1 - tile2 }
-                      else { tile2 - tile1 }
+                      if(key1.instant == time1.instant) {
+                        operateOnTwoTiles(tile1, tile2)
+                      }
+                      else {
+                        operateOnTwoTiles(tile2, tile1)
+                      }
 
                     (key1, tile)
                   }
@@ -399,11 +407,12 @@ class DemoServiceActor(
                         val results = Array.ofDim[Int](stateLength)
                         cfor(0)(_ < stateLength, _ + 1) { i =>
                           var max = Int.MinValue
-                          reprojectedStates(i).geom.foreachCell(raster) { (col, row) =>
+                          reprojectedStates(i).geom.foreachCell(raster.rasterExtent) { (col, row) =>
                             val z = raster.tile.get(col, row)
                             if(isData(z)) {
                               if(z > max) max = z
                             }
+                            1
                           }
                           results(i) = max
                         }
@@ -498,12 +507,13 @@ class DemoServiceActor(
                         cfor(0)(_ < stateLength, _ + 1) { i =>
                           var sum = 0
                           var count = 0
-                          reprojectedStates(i).geom.foreachCell(raster) { (col, row) =>
+                          reprojectedStates(i).geom.foreachCell(raster.rasterExtent) { (col, row) =>
                             val z = raster.tile.get(col, row)
                             if(isData(z)) {
                               sum += math.abs(z)
                               count += 1
                             }
+                            1
                           }
                           sums(i) = sum
                           counts(i) = count
@@ -572,34 +582,35 @@ class DemoServiceActor(
       }
     } ~
     pathPrefix("average" / Segment / Segment) { (stateName, layer) =>
-      import spray.json.DefaultJsonProtocol._
-      cors {
-        parameters('time) { (timeString) =>
-          val time = DateTime.parse(timeString, dateTimeFormat)
-          complete {
-            future {
-              val state = statesByName(stateName)
-              val zoom = metadataReader.layerNamesToMaxZooms(layer) - 1
+      ???
+      // import spray.json.DefaultJsonProtocol._
+      // cors {
+      //   parameters('time) { (timeString) =>
+      //     val time = DateTime.parse(timeString, dateTimeFormat)
+      //     complete {
+      //       future {
+      //         val state = statesByName(stateName)
+      //         val zoom = metadataReader.layerNamesToMaxZooms(layer) - 1
 
-              val mean =
-                readerSet.singleBandLayerReader
-                  .query(LayerId(layer, zoom))
-                  .where(Between(time, time))
-                  .where(Intersects(state.geom))
-                  .toRDD
-                  .zonalMean(state.geom)
-              state
-                .mapGeom(geom => geom.reproject(WebMercator, LatLng))
-                .mapData { d =>
-                  JsObject(
-                    "name" -> JsString(d.name),
-                    "meanTemp" -> JsNumber(f"${mean}%.2f".toDouble)
-                  )
-                }
-            }
-          }
-        }
-      }
+      //         val mean =
+      //           readerSet.singleBandLayerReader
+      //             .query(LayerId(layer, zoom))
+      //             .where(Between(time, time))
+      //             .where(Intersects(state.geom))
+      //             .toRDD
+      //             .zonalMean(state.geom)
+      //         state
+      //           .mapGeom(geom => geom.reproject(WebMercator, LatLng))
+      //           .mapData { d =>
+      //             JsObject(
+      //               "name" -> JsString(d.name),
+      //               "meanTemp" -> JsNumber(f"${mean}%.2f".toDouble)
+      //             )
+      //           }
+      //       }
+      //     }
+      //   }
+      // }
     }
 
   def stateDiffRoute =
@@ -682,54 +693,55 @@ class DemoServiceActor(
       }
     } ~
     pathPrefix("average" / Segment / Segment /Segment) { (stateName, layer1, layer2) =>
-      import spray.json.DefaultJsonProtocol._
-      cors {
-        parameters('time1, 'time2) { (time1String, time2String) =>
-          val time1 = DateTime.parse(time1String, dateTimeFormat)
-          val time2 = DateTime.parse(time2String, dateTimeFormat)
-          complete {
-            future {
-              val state = statesByName(stateName)
-              val zoom = metadataReader.layerNamesToMaxZooms(layer1) - 1
+      ???
+      // import spray.json.DefaultJsonProtocol._
+      // cors {
+      //   parameters('time1, 'time2) { (time1String, time2String) =>
+      //     val time1 = DateTime.parse(time1String, dateTimeFormat)
+      //     val time2 = DateTime.parse(time2String, dateTimeFormat)
+      //     complete {
+      //       future {
+      //         val state = statesByName(stateName)
+      //         val zoom = metadataReader.layerNamesToMaxZooms(layer1) - 1
 
-              val mean =
-                readerSet.singleBandLayerReader
-                  .query(LayerId(layer1, zoom))
-                  .where(Between(time1, time1))
-                  .where(Intersects(state.geom))
-                  .toRDD
-                  .withContext { rdd =>
-                    rdd.union(
-                      readerSet.singleBandLayerReader
-                        .query(LayerId(layer2, zoom))
-                        .where(Between(time2, time2))
-                        .where(Intersects(state.geom))
-                        .toRDD
-                    )
-                    .map { case (key, tile) => (key.spatialComponent, (key, tile)) }
-                    .groupByKey
-                    .mapValues { tiles =>
-                      val Seq((key1, tile1), (key2, tile2)) = tiles
-                      val tile =
-                        if(key1.instant == time1.getMillis) { tile1 - tile2 }
-                        else { tile2 - tile1 }
+      //         val mean =
+      //           readerSet.singleBandLayerReader
+      //             .query(LayerId(layer1, zoom))
+      //             .where(Between(time1, time1))
+      //             .where(Intersects(state.geom))
+      //             .toRDD
+      //             .withContext { rdd =>
+      //               rdd.union(
+      //                 readerSet.singleBandLayerReader
+      //                   .query(LayerId(layer2, zoom))
+      //                   .where(Between(time2, time2))
+      //                   .where(Intersects(state.geom))
+      //                   .toRDD
+      //               )
+      //               .map { case (key, tile) => (key.spatialComponent, (key, tile)) }
+      //               .groupByKey
+      //               .mapValues { tiles =>
+      //                 val Seq((key1, tile1), (key2, tile2)) = tiles
+      //                 val tile =
+      //                   if(key1.instant == time1.getMillis) { tile1 - tile2 }
+      //                   else { tile2 - tile1 }
 
-                      tile
-                    }
-                  }
-                  .zonalMean(state)
+      //                 tile
+      //               }
+      //             }
+      //             .zonalMean(state)
 
-              state
-                .mapGeom(geom => geom.reproject(WebMercator, LatLng))
-                .mapData { d =>
-                  JsObject(
-                    "name" -> JsString(d.name),
-                    "meanTemp" -> JsNumber(f"${mean}%.2f".toDouble)
-                  )
-                }
-            }
-          }
-        }
-      }
+      //         state
+      //           .mapGeom(geom => geom.reproject(WebMercator, LatLng))
+      //           .mapData { d =>
+      //             JsObject(
+      //               "name" -> JsString(d.name),
+      //               "meanTemp" -> JsNumber(f"${mean}%.2f".toDouble)
+      //             )
+      //           }
+      //       }
+      //     }
+      //   }
+      // }
     }
 }

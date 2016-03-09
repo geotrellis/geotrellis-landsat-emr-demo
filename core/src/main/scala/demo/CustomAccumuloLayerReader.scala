@@ -58,50 +58,50 @@ class CustomAccumuloLayerReader[V: AvroRecordCodec: ClassTag, M: JsonFormat](
     columnFamily: String,
     queryKeyBounds: Seq[KeyBounds[SpaceTimeKey]],
     writerSchema: Schema
-  ): RDD[(SpaceTimeKey, V)] = {
-    val codec = KryoWrapper(KeyValueRecordCodec[SpaceTimeKey, V])
-    val boundable = implicitly[Boundable[SpatialKey]]
-    val kwWriterSchema = KryoWrapper(writerSchema)
+  ): RDD[(SpaceTimeKey, V)] = ???// {
+  //   val codec = KryoWrapper(KeyValueRecordCodec[SpaceTimeKey, V])
+  //   val boundable = implicitly[Boundable[SpatialKey]]
+  //   val kwWriterSchema = KryoWrapper(writerSchema)
 
-    val job = Job.getInstance(sc.hadoopConfiguration)
-    instance.setAccumuloConfig(job)
-    InputFormatBase.setInputTableName(job, table)
+  //   val job = Job.getInstance(sc.hadoopConfiguration)
+  //   instance.setAccumuloConfig(job)
+  //   InputFormatBase.setInputTableName(job, table)
 
-    val includeKey = (key: SpaceTimeKey) => KeyBounds.includeKey(queryKeyBounds, key)(SpaceTimeKey.Boundable)
-    val timeText = (key: SpaceTimeKey) => new Text(key.time.withZone(DateTimeZone.UTC).toString)
+  //   val includeKey = (key: SpaceTimeKey) => KeyBounds.includeKey(queryKeyBounds, key)(SpaceTimeKey.Boundable)
+  //   val timeText = (key: SpaceTimeKey) => new Text(key.time.withZone(DateTimeZone.UTC).toString)
 
-    val queryBoundRDDs =
-      queryKeyBounds
-        .map { bounds =>
-          val ranges =
-            CustomKeyIndex.indexRanges(bounds).map { case (min, max) =>
-              new AccumuloRange(min, max)
-            }
+  //   val queryBoundRDDs =
+  //     queryKeyBounds
+  //       .map { bounds =>
+  //         val ranges =
+  //           CustomKeyIndex.indexRanges(bounds).map { case (min, max) =>
+  //             new AccumuloRange(min, max)
+  //           }
 
-          InputFormatBase.setRanges(job, ranges)
-          InputFormatBase.fetchColumns(job, List(new AccumuloPair(new Text(columnFamily), null: Text)))
-          InputFormatBase.addIterator(job,
-            new IteratorSetting(2,
-              "TimeColumnFilter",
-              "org.apache.accumulo.core.iterators.user.ColumnSliceFilter",
-              Map("startBound" -> bounds.minKey.time.toString,
-                "endBound" -> bounds.maxKey.time.toString,
-                "startInclusive" -> "true",
-                "endInclusive" -> "true")))
+  //         InputFormatBase.setRanges(job, ranges)
+  //         InputFormatBase.fetchColumns(job, List(new AccumuloPair(new Text(columnFamily), null: Text)))
+  //         InputFormatBase.addIterator(job,
+  //           new IteratorSetting(2,
+  //             "TimeColumnFilter",
+  //             "org.apache.accumulo.core.iterators.user.ColumnSliceFilter",
+  //             Map("startBound" -> bounds.minKey.time.toString,
+  //               "endBound" -> bounds.maxKey.time.toString,
+  //               "startInclusive" -> "true",
+  //               "endInclusive" -> "true")))
 
-          sc.newAPIHadoopRDD(
-            job.getConfiguration,
-            classOf[BatchAccumuloInputFormat],
-            classOf[Key],
-            classOf[Value])
-        }
-        .map { rdd =>
-          rdd
-            .flatMap { case (_, value) =>
-              val pairs = AvroEncoder.fromBinary(kwWriterSchema.value, value.get)(codec.value)
-              pairs.filter{ pair => includeKey(pair._1) }
-            }
-        }
-    sc.union(queryBoundRDDs)
-  }
+  //         sc.newAPIHadoopRDD(
+  //           job.getConfiguration,
+  //           classOf[BatchAccumuloInputFormat],
+  //           classOf[Key],
+  //           classOf[Value])
+  //       }
+  //       .map { rdd =>
+  //         rdd
+  //           .flatMap { case (_, value) =>
+  //             val pairs = AvroEncoder.fromBinary(kwWriterSchema.value, value.get)(codec.value)
+  //             pairs.filter{ pair => includeKey(pair._1) }
+  //           }
+  //       }
+  //   sc.union(queryBoundRDDs)
+  // }
 }

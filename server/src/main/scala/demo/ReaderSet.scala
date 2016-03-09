@@ -36,9 +36,9 @@ trait ReaderSet {
 
         val requestZoomMapTransform = layoutScheme.levelForZoom(zoom).layout.mapTransform
         val requestExtent = requestZoomMapTransform(x, y)
-        val centerPoint = requestZoomMapTransform(x, y).center
-        val SpatialKey(nx, ny) = rmd.mapTransform(centerPoint)
-        val sourceExtent = rmd.mapTransform(nx, ny)
+        val centerPoint = requestExtent.center
+        val sk @ SpatialKey(nx, ny) = rmd.mapTransform(centerPoint)
+        val sourceExtent = rmd.mapTransform(sk)
 
 
         val largerTile =

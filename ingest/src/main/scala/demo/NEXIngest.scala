@@ -165,7 +165,7 @@ object NEXIngest {
     SpaceTimeGeoTiffS3InputFormat.setTimeTag(conf, "ISO_TIME")
     SpaceTimeGeoTiffS3InputFormat.setTimeFormat(conf, "yyyy-MM-dd'T'HH:mm:ss")
 
-    val tiles =
+    val tiles: RDD[(SpaceTimeInputKey, Tile)] =
       sc.newAPIHadoopRDD(
         conf,
         classOf[SpaceTimeGeoTiffS3InputFormat],

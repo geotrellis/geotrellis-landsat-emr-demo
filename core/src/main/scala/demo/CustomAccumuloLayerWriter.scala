@@ -63,44 +63,44 @@ class CustomAccumuloLayerWriter[V: AvroRecordCodec: ClassTag, M: JsonFormat](
   val strategy = HdfsWriteStrategy("/geotrellis-ingest")
   val attributeStore = AccumuloAttributeStore(instance.connector)
 
-  def write(id: LayerId, rdd: RDD[(SpaceTimeKey, V)] with Metadata[M]): Unit = {
-    val codec  = KeyValueRecordCodec[SpaceTimeKey, V]
-    val schema = codec.schema
+  def write(id: LayerId, rdd: RDD[(SpaceTimeKey, V)] with Metadata[M]): Unit = ???// {
+  //   val codec  = KeyValueRecordCodec[SpaceTimeKey, V]
+  //   val schema = codec.schema
 
-    val header =
-      AccumuloLayerHeader(
-        keyClass = classTag[SpaceTimeKey].toString(),
-        valueClass = classTag[V].toString(),
-        tileTable = table
-      )
-    val metaData = rdd.metadata
-    val keyBounds = implicitly[Boundable[SpaceTimeKey]].getKeyBounds(rdd)
+  //   val header =
+  //     AccumuloLayerHeader(
+  //       keyClass = classTag[SpaceTimeKey].toString(),
+  //       valueClass = classTag[V].toString(),
+  //       tileTable = table
+  //     )
+  //   val metaData = rdd.metadata
+  //   val keyBounds = implicitly[Boundable[SpaceTimeKey]].collectBounds(rdd)
 
-    try {
-      attributeStore.write(id, "header", header)
-      attributeStore.write(id, "metadata", metaData)
-      attributeStore.write(id, "keyBounds", keyBounds)
-      attributeStore.write(id, "schema", schema)
+  //   try {
+  //     attributeStore.write(id, "header", header)
+  //     attributeStore.write(id, "metadata", metaData)
+  //     attributeStore.write(id, "keyBounds", keyBounds)
+  //     attributeStore.write(id, "schema", schema)
 
-      implicit val sc = rdd.sparkContext
+  //     implicit val sc = rdd.sparkContext
 
-      ensureTableExists(table)
-      makeLocalityGroup(table, columnFamily(id))
+  //     ensureTableExists(table)
+  //     makeLocalityGroup(table, columnFamily(id))
 
-      val cf = columnFamily(id)
+  //     val cf = columnFamily(id)
 
-      val _codec = codec
-      val kvPairs =
-        rdd
-          .map { case tuple @ (key, _) =>
-            val value: Value = new Value(AvroEncoder.toBinary(Vector(tuple))(_codec))
-            val rowKey = new Key(CustomKeyIndex.toIndex(key), cf, new Text(key.time.withZone(DateTimeZone.UTC).toString))
-            (rowKey, value)
-          }
+  //     val _codec = codec
+  //     val kvPairs =
+  //       rdd
+  //         .map { case tuple @ (key, _) =>
+  //           val value: Value = new Value(AvroEncoder.toBinary(Vector(tuple))(_codec))
+  //           val rowKey = new Key(CustomKeyIndex.toIndex(key), cf, new Text(key.time.withZone(DateTimeZone.UTC).toString))
+  //           (rowKey, value)
+  //         }
 
-      strategy.write(kvPairs, instance, table)
-    } catch {
-      case e: Exception => throw new LayerWriteError(id).initCause(e)
-    }
-  }
+  //     strategy.write(kvPairs, instance, table)
+  //   } catch {
+  //     case e: Exception => throw new LayerWriteError(id).initCause(e)
+  //   }
+  // }
 }

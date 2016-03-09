@@ -21,7 +21,8 @@ class FileReaderSet(path: String)(implicit sc: SparkContext) extends ReaderSet {
   val metadataReader =
     new MetadataReader {
       def initialRead(layer: LayerId) = {
-        val rmd = attributeStore.readLayerAttributes[FileLayerHeader, RasterMetaData, KeyBounds[SpaceTimeKey], KeyIndex[SpaceTimeKey], Schema](layer)._2
+        val rmd =
+          attributeStore.readLayerAttributes[FileLayerHeader, RasterMetaData, KeyBounds[SpaceTimeKey], KeyIndex[SpaceTimeKey], Schema](layer)._2
         val times = attributeStore.read[Array[Long]](LayerId(layer.name, 0), "times")
         LayerMetadata(rmd, times)
       }
