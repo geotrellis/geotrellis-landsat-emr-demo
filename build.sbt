@@ -24,15 +24,10 @@ lazy val commonSettings = Seq(
 ) ++ net.virtualvoid.sbt.graph.Plugin.graphSettings
 
 lazy val root = Project("demo", file("."))
-  .aggregate(ingest, server, core)
-
-lazy val core = Project("core", file("core"))
-  .settings(commonSettings: _*)
+  .aggregate(ingest, server)
 
 lazy val ingest = Project("ingest", file("ingest"))
-  .dependsOn(core)
   .settings(commonSettings: _*)
 
 lazy val server = Project("server", file("server"))
-  .dependsOn(core)
   .settings(commonSettings: _*)
