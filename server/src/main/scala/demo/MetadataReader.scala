@@ -9,10 +9,10 @@ import spray.json._
 
 import java.util.concurrent.ConcurrentHashMap
 
-trait MetadataReader extends Reader[LayerId, LayerMetadata] {
-  private val cache = new ConcurrentHashMap[LayerId, LayerMetadata]
+trait MetadataReader[K] extends Reader[LayerId, LayerMetadata[K]] {
+  private val cache = new ConcurrentHashMap[LayerId, LayerMetadata[K]]
 
-  def read(layerId: LayerId): LayerMetadata =
+  def read(layerId: LayerId): LayerMetadata[K] =
     if(cache.containsKey(layerId))
       cache.get(layerId)
     else {
@@ -21,7 +21,7 @@ trait MetadataReader extends Reader[LayerId, LayerMetadata] {
       value
     }
 
-  def initialRead(layerId: LayerId): LayerMetadata
+  def initialRead(layerId: LayerId): LayerMetadata[K]
 
   def layerNamesToZooms: Map[String, Array[Int]]
 

@@ -17,11 +17,11 @@ import scala.reflect._
 trait ReaderSet {
   val layoutScheme = ZoomedLayoutScheme(WebMercator, 256)
 
-  def metadataReader: MetadataReader
-  def singleBandLayerReader: FilteringLayerReader[LayerId, SpaceTimeKey, RasterMetaData, RasterRDD[SpaceTimeKey]]
+  def metadataReader: MetadataReader[SpaceTimeKey]
+  def singleBandLayerReader: FilteringLayerReader[LayerId]
   def singleBandTileReader: TileReader[SpaceTimeKey, Tile]
-  def multiBandLayerReader: FilteringLayerReader[LayerId, SpaceTimeKey, RasterMetaData, MultiBandRasterRDD[SpaceTimeKey]]
-  def multiBandTileReader: TileReader[SpaceTimeKey, MultiBandTile]
+  def multiBandLayerReader: FilteringLayerReader[LayerId]
+  def multiBandTileReader: TileReader[SpaceTimeKey, MultibandTile]
 
   /** Do "overzooming", where we resample lower zoom level tiles to serve out higher zoom level tiles. */
   def readSingleBandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[Tile] =
@@ -32,7 +32,7 @@ trait ReaderSet {
         val layerId = LayerId(layer, z)
 
         val meta = metadataReader.read(layerId)
-        val rmd = meta.rasterMetaData
+        val rmd = meta.tileLayerMetadata
 
         val requestZoomMapTransform = layoutScheme.levelForZoom(zoom).layout.mapTransform
         val requestExtent = requestZoomMapTransform(x, y)
@@ -54,7 +54,7 @@ trait ReaderSet {
     }
 
   /** Do "overzooming", where we resample lower zoom level tiles to serve out higher zoom level tiles. */
-  def readMultiBandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[MultiBandTile] =
+  def readMultibandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[MultibandTile] =
     try {
       val z = metadataReader.layerNamesToMaxZooms(layer)
 
@@ -62,7 +62,7 @@ trait ReaderSet {
         val layerId = LayerId(layer, z)
 
         val meta = metadataReader.read(layerId)
-        val rmd = meta.rasterMetaData
+        val rmd = meta.tileLayerMetadata
 
         val requestZoomMapTransform = layoutScheme.levelForZoom(zoom).layout.mapTransform
         val requestExtent = requestZoomMapTransform(x, y)

@@ -19,9 +19,9 @@ class FileReaderSet(path: String)(implicit sc: SparkContext) extends ReaderSet {
   val attributeStore = FileAttributeStore(path)
 
   val metadataReader =
-    new MetadataReader {
+    new MetadataReader[SpaceTimeKey] {
       def initialRead(layer: LayerId) = {
-        val rmd = attributeStore.readLayerAttributes[FileLayerHeader, RasterMetaData, KeyBounds[SpaceTimeKey], KeyIndex[SpaceTimeKey], Schema](layer)._2
+        val rmd = attributeStore.readLayerAttributes[FileLayerHeader, TileLayerMetadata[SpaceTimeKey], SpaceTimeKey](layer).metadata
         val times = attributeStore.read[Array[Long]](LayerId(layer.name, 0), "times")
         LayerMetadata(rmd, times)
       }
@@ -36,9 +36,9 @@ class FileReaderSet(path: String)(implicit sc: SparkContext) extends ReaderSet {
         attributeStore.read[T](LayerId(layerName, 0), attributeName)
     }
 
-  val singleBandLayerReader = FileLayerReader[SpaceTimeKey, Tile, RasterMetaData](attributeStore)
+  val singleBandLayerReader = FileLayerReader(attributeStore)
   val singleBandTileReader = new TileReader(FileTileReader[SpaceTimeKey, Tile](path))
 
-  val multiBandLayerReader = FileLayerReader[SpaceTimeKey, MultiBandTile, RasterMetaData](attributeStore)
-  val multiBandTileReader = new TileReader(FileTileReader[SpaceTimeKey, MultiBandTile](path))
+  val multiBandLayerReader = FileLayerReader(attributeStore)
+  val multiBandTileReader = new TileReader(FileTileReader[SpaceTimeKey, MultibandTile](path))
 }

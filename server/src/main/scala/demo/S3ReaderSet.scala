@@ -19,9 +19,9 @@ class S3ReaderSet(bucket: String, prefix: String)(implicit sc: SparkContext) ext
   val attributeStore = S3AttributeStore(bucket, prefix)
 
   val metadataReader =
-    new MetadataReader {
+    new MetadataReader[SpaceTimeKey] {
       def initialRead(layer: LayerId) = {
-        val rmd = attributeStore.readLayerAttributes[S3LayerHeader, RasterMetaData, KeyBounds[SpaceTimeKey], KeyIndex[SpaceTimeKey], Schema](layer)._2
+        val rmd = attributeStore.readLayerAttributes[S3LayerHeader, TileLayerMetadata[SpaceTimeKey], SpaceTimeKey](layer).metadata
         val times = attributeStore.read[Array[Long]](LayerId(layer.name, 0), "times")
         LayerMetadata(rmd, times)
       }
@@ -36,9 +36,9 @@ class S3ReaderSet(bucket: String, prefix: String)(implicit sc: SparkContext) ext
         attributeStore.read[T](LayerId(layerName, 0), attributeName)
     }
 
-  val singleBandLayerReader = S3LayerReader[SpaceTimeKey, Tile, RasterMetaData](attributeStore)
+  val singleBandLayerReader = S3LayerReader(attributeStore)
   val singleBandTileReader = new TileReader(S3TileReader[SpaceTimeKey, Tile](bucket, prefix))
 
-  val multiBandLayerReader = S3LayerReader[SpaceTimeKey, MultiBandTile, RasterMetaData](attributeStore)
-  val multiBandTileReader = new TileReader(S3TileReader[SpaceTimeKey, MultiBandTile](bucket, prefix))
+  val multiBandLayerReader = S3LayerReader(attributeStore)
+  val multiBandTileReader = new TileReader(S3TileReader[SpaceTimeKey, MultibandTile](bucket, prefix))
 }

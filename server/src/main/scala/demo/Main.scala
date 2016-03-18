@@ -55,7 +55,7 @@ object Main {
         .setIfMissing("spark.master", "local[*]")
         .setAppName("Demo Server")
         .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-        .set("spark.kryo.registrator", "geotrellis.spark.io.hadoop.KryoRegistrator")
+        .set("spark.kryo.registrator", "geotrellis.spark.io.kryo.KryoRegistrator")
 
     implicit val sc = new SparkContext(conf)
 

@@ -1,7 +1,7 @@
 val deps = Seq(
-  "com.azavea.geotrellis" %% "geotrellis-spark" % Version.geotrellis,
   "com.azavea.geotrellis" %% "geotrellis-accumulo" % Version.geotrellis,
-  "com.azavea.geotrellis" %% "geotrellis-s3" % Version.geotrellis
+  "com.azavea.geotrellis" %% "geotrellis-s3" % Version.geotrellis,
+  "com.azavea.geotrellis" %% "geotrellis-spark" % Version.geotrellis
 )
 
 lazy val commonSettings = Seq(

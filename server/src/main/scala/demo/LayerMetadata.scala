@@ -1,5 +1,5 @@
 package demo
 
-import geotrellis.spark.RasterMetaData
+import geotrellis.spark.TileLayerMetadata
 
-case class LayerMetadata(rasterMetaData: RasterMetaData, times: Array[Long])
+case class LayerMetadata[K](tileLayerMetadata: TileLayerMetadata[K], times: Array[Long])
