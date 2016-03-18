@@ -1,3 +1,9 @@
+val deps = Seq(
+  "com.azavea.geotrellis" %% "geotrellis-spark" % Version.geotrellis,
+  "com.azavea.geotrellis" %% "geotrellis-accumulo" % Version.geotrellis,
+  "com.azavea.geotrellis" %% "geotrellis-s3" % Version.geotrellis
+)
+
 lazy val commonSettings = Seq(
   version := "0.1.0",
   scalaVersion := "2.10.5",
@@ -28,6 +34,8 @@ lazy val root = Project("demo", file("."))
 
 lazy val ingest = Project("ingest", file("ingest"))
   .settings(commonSettings: _*)
+  .settings(libraryDependencies ++= deps)
 
 lazy val server = Project("server", file("server"))
   .settings(commonSettings: _*)
+  .settings(libraryDependencies ++= deps)
