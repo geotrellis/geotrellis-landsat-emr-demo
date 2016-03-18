@@ -10,7 +10,7 @@ import geotrellis.spark.tiling._
 import geotrellis.spark.io.file._
 import geotrellis.spark.io.index._
 import geotrellis.spark.io.avro.codecs._
-import geotrellis.spark.io.json._
+import geotrellis.spark.io._
 import geotrellis.proj4._
 
 import org.apache.commons.io.filefilter._
@@ -34,7 +34,7 @@ object PlanetLabsIngest {
         .setIfMissing("spark.master", "local[4]")
         .setAppName("PlanetLabs Ingest")
         .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-        .set("spark.kryo.registrator", "geotrellis.spark.io.hadoop.KryoRegistrator")
+        .set("spark.kryo.registrator", "geotrellis.spark.io.kryo.KryoRegistrator")
 
     implicit val sc = new SparkContext(conf)
 
@@ -64,42 +64,37 @@ object PlanetLabsIngest {
     val targetLayoutScheme = ZoomedLayoutScheme(WebMercator, 256)
     // Create tiled RDDs for each
     val tileSets =
-      images.foldLeft(Seq[(Int, MultiBandRasterRDD[SpaceTimeKey])]()) { case (acc, (path, time)) =>
-        val geoTiff = MultiBandGeoTiff(path)
-        val ingestElement = (SpaceTimeInputKey(geoTiff.extent, geoTiff.crs, time), geoTiff.tile)
+      images.foldLeft(Seq[(Int, MultibandTileLayerRDD[SpaceTimeKey])]()) { case (acc, (path, time)) =>
+        val geoTiff = MultibandGeoTiff(path)
+        val ingestElement = (TemporalProjectedExtent(geoTiff.extent, geoTiff.crs, time), geoTiff.tile)
         val sourceTile = sc.parallelize(Seq(ingestElement))
         val (_, metadata) =
-          RasterMetaData.fromRdd(sourceTile, FloatingLayoutScheme(512))
+          TileLayerMetadata.fromRdd[TemporalProjectedExtent, MultibandTile, SpaceTimeKey](sourceTile, FloatingLayoutScheme(512))
 
         val tiled =
           sourceTile
             .tileToLayout[SpaceTimeKey](metadata, Tiler.Options(resampleMethod = NearestNeighbor, partitioner = new HashPartitioner(100)))
 
-        val rdd = MultiBandRasterRDD(tiled, metadata)
+        val rdd = MultibandTileLayerRDD(tiled, metadata)
 
         // Reproject to WebMercator
         acc :+ rdd.reproject(targetLayoutScheme, bufferSize = 30, Reproject.Options(method = Bilinear, errorThreshold = 0))
       }
 
     val zoom = tileSets.head._1
-    val headRdd = tileSets.head._2
     val rdd = ContextRDD(
       sc.union(tileSets.map(_._2)),
-      RasterMetaData(
-        headRdd.metadata.cellType,
-        headRdd.metadata.layout,
-        tileSets.map { case (_, rdd) => (rdd.metadata.extent) }.reduce(_.combine(_)),
-        headRdd.metadata.crs
-      )
+      tileSets.map({ case (_, rdd) => rdd.metadata}).reduce({ _ merge _ }) // These are all of the same zoom level
     )
 
     // Write to the catalog
     val attributeStore = FileAttributeStore(catalogPath)
-    val writer = FileLayerWriter[SpaceTimeKey, MultiBandTile, RasterMetaData](attributeStore, ZCurveKeyIndexMethod.byMillisecondResolution(1000L * 60 * 60 * 24))
+    val writer = FileLayerWriter(attributeStore)
+    val method = ZCurveKeyIndexMethod.byDay
 
     val lastRdd =
       Pyramid.upLevels(rdd, targetLayoutScheme, zoom, Bilinear) { (rdd, zoom) =>
-        writer.write(LayerId(layerName, zoom), rdd)
+        writer.write(LayerId(layerName, zoom), rdd, method)
       }
 
     attributeStore.write(LayerId(layerName, 0), "times", lastRdd.map(_._1.instant).collect.toArray)
