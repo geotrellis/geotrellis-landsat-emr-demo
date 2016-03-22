@@ -1,3 +1,3 @@
 object Version {
-  val geotrellis = "0.10.0-RC1"
+  val geotrellis = "0.10.0-RC2"
 }
