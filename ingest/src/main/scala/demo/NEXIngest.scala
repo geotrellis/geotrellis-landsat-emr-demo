@@ -5,7 +5,6 @@ import geotrellis.raster.histogram._
 import geotrellis.raster.reproject._
 import geotrellis.raster.resample._
 import geotrellis.raster.io.geotiff._
-import geotrellis.raster.op.stats._
 import geotrellis.spark._
 import geotrellis.spark.ingest._
 import geotrellis.spark.io._
@@ -38,7 +37,7 @@ object NEXIngest {
   val targetLayoutScheme = ZoomedLayoutScheme(WebMercator, 256)
 
   // Index by every 1 month
-  val indexMethod = ZCurveKeyIndexMethod.byMillisecondResolution(1000L * 60 * 60 * 24 * 30)
+  val indexMethod = ZCurveKeyIndexMethod.byMonth
 
   def main(args: Array[String]): Unit = {
     // Setup Spark to use Kryo serializer.
@@ -47,7 +46,7 @@ object NEXIngest {
         .setIfMissing("spark.master", "local[8]")
         .setAppName("NEX Ingest")
         .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-        .set("spark.kryo.registrator", "geotrellis.spark.io.hadoop.KryoRegistrator")
+        .set("spark.kryo.registrator", "geotrellis.spark.io.kryo.KryoRegistrator")
 
     implicit val sc = new SparkContext(conf)
 
@@ -102,15 +101,15 @@ object NEXIngest {
 
   def processSourceTiles(
     layerName: String,
-    sourceTiles: RDD[(SpaceTimeInputKey, Tile)],
-    attributeStore: AttributeStore[JsonFormat],
-    writer: Writer[LayerId, RasterRDD[SpaceTimeKey]],
+    sourceTiles: RDD[(TemporalProjectedExtent, Tile)],
+    attributeStore: AttributeStore,
+    writer: LayerWriter[LayerId],
     partitionTo: Option[Int] = None
   ): Unit = {
     // We really only need UShort resolution with fahrenheit values.
     val fahrenheitSourceTiles =
       sourceTiles.mapValues { tile =>
-        tile.convert(TypeShort).mapDouble { v =>
+        tile.convert(ShortCellType).mapDouble { v =>
           if(isData(v)) {
             (v * 9) / 5 - 459.67
           } else { v }
@@ -118,7 +117,7 @@ object NEXIngest {
       }
 
     val (_, metadataWithoutCrs) =
-      RasterMetaData.fromRdd(fahrenheitSourceTiles, FloatingLayoutScheme(512))
+      TileLayerMetadata.fromRdd[TemporalProjectedExtent, Tile, SpaceTimeKey](fahrenheitSourceTiles, FloatingLayoutScheme(512))
 
     val metadata = metadataWithoutCrs.copy(crs = LatLng)
 
@@ -133,21 +132,21 @@ object NEXIngest {
       }
 
     val (zoom, layer) =
-      RasterRDD(tiled, metadata)
+      TileLayerRDD(tiled, metadata)
         .reproject(targetLayoutScheme, bufferSize = 30, Reproject.Options(method = Bilinear, errorThreshold = 0))
 
     val halfZoom = zoom / 2
 
     val lastRdd =
       Pyramid.upLevels(layer, targetLayoutScheme, zoom, Bilinear) { (rdd, zoom) =>
-        writer.write(LayerId(layerName, zoom), rdd)
+        writer.write(LayerId(layerName, zoom), rdd, indexMethod)
         if(zoom == halfZoom) {
           // Store breaks
           val breaks =
             rdd
               .map{ case (key, tile) => tile.histogram }
-              .reduce { (h1, h2) => FastMapHistogram.fromHistograms(Array(h1,h2)) }
-              .getQuantileBreaks(20)
+              .reduce { _ merge _ }
+              .quantileBreaks(20)
 
           attributeStore.write(LayerId(layerName, 0), "breaks", breaks)
         }
@@ -157,19 +156,18 @@ object NEXIngest {
     attributeStore.write(LayerId(layerName, 0), "times", lastRdd.map(_._1.instant).collect.toArray)
   }
 
-  def s3SourceTiles(bucket: String, prefix: String)(implicit sc: SparkContext): RDD[(SpaceTimeInputKey, Tile)] = {
+  def s3SourceTiles(bucket: String, prefix: String)(implicit sc: SparkContext): RDD[(TemporalProjectedExtent, Tile)] = {
     val conf = sc.hadoopConfiguration
     S3InputFormat.setBucket(conf, bucket)
     S3InputFormat.setPrefix(conf, prefix)
-    S3InputFormat.setMaxKeys(conf, 100)
-    SpaceTimeGeoTiffS3InputFormat.setTimeTag(conf, "ISO_TIME")
-    SpaceTimeGeoTiffS3InputFormat.setTimeFormat(conf, "yyyy-MM-dd'T'HH:mm:ss")
+    TemporalGeoTiffS3InputFormat.setTimeTag(conf, "ISO_TIME")
+    TemporalGeoTiffS3InputFormat.setTimeFormat(conf, "yyyy-MM-dd'T'HH:mm:ss")
 
     val tiles =
       sc.newAPIHadoopRDD(
         conf,
-        classOf[SpaceTimeGeoTiffS3InputFormat],
-        classOf[SpaceTimeInputKey],
+        classOf[TemporalGeoTiffS3InputFormat],
+        classOf[TemporalProjectedExtent],
         classOf[Tile]
       )
 
@@ -187,52 +185,54 @@ object NEXIngest {
 
     val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
     val attributeStore = AccumuloAttributeStore(instance.connector)
-    val writer = AccumuloLayerWriter[SpaceTimeKey, Tile, RasterMetaData](instance, "tiles", indexMethod)
+    val writer = AccumuloLayerWriter(instance, "tiles")
+    // val writer = AccumuloLayerWriter[SpaceTimeKey, Tile, TileLayerMetadata](instance, "tiles", indexMethod)
 
     processSourceTiles(layerName, s3SourceTiles(bucket, prefix), attributeStore, writer)
   }
 
   def runS3(layerName: String, bucket: String, prefix: String)(implicit sc: SparkContext): Unit = {
     val attributeStore = S3AttributeStore("geotrellis-climate-catalogs", "ensemble-temperature-catalog")
-    val writer = S3LayerWriter[SpaceTimeKey, Tile, RasterMetaData](attributeStore, indexMethod)
+    val writer = S3LayerWriter(attributeStore)
 
     processSourceTiles(layerName, s3SourceTiles(bucket, prefix), attributeStore, writer)
   }
 
   def runLocal(layerName: String, tilesDir: String)(implicit sc: SparkContext): Unit = {
     val conf = sc.hadoopConfiguration.withInputDirectory(tilesDir)
-    SpaceTimeGeoTiffInputFormat.setTimeTag(conf, "ISO_TIME")
-    SpaceTimeGeoTiffInputFormat.setTimeFormat(conf, "yyyy-MM-dd'T'HH:mm:ss")
+    TemporalGeoTiffInputFormat.setTimeTag(conf, "ISO_TIME")
+    TemporalGeoTiffInputFormat.setTimeFormat(conf, "yyyy-MM-dd'T'HH:mm:ss")
 
     val sourceTiles =
       sc.newAPIHadoopRDD(
         conf,
-        classOf[SpaceTimeGeoTiffInputFormat],
-        classOf[SpaceTimeInputKey],
+        classOf[TemporalGeoTiffInputFormat],
+        classOf[TemporalProjectedExtent],
         classOf[Tile]
       )
 
     val attributeStore = FileAttributeStore(catalogPath)
-    val writer = FileLayerWriter[SpaceTimeKey, Tile, RasterMetaData](attributeStore, indexMethod)
+    val writer = FileLayerWriter(attributeStore)
 
     processSourceTiles(layerName, sourceTiles, attributeStore, writer, Some(100))
   }
 
   def runCustomLocal(layerName: String, tilesDir: String)(implicit sc: SparkContext): Unit = {
     val conf = sc.hadoopConfiguration.withInputDirectory(tilesDir)
-    SpaceTimeGeoTiffInputFormat.setTimeTag(conf, "ISO_TIME")
-    SpaceTimeGeoTiffInputFormat.setTimeFormat(conf, "yyyy-MM-dd'T'HH:mm:ss")
+    TemporalGeoTiffInputFormat.setTimeTag(conf, "ISO_TIME")
+    TemporalGeoTiffInputFormat.setTimeFormat(conf, "yyyy-MM-dd'T'HH:mm:ss")
 
     val sourceTiles =
       sc.newAPIHadoopRDD(
         conf,
-        classOf[SpaceTimeGeoTiffInputFormat],
-        classOf[SpaceTimeInputKey],
+        classOf[TemporalGeoTiffInputFormat],
+        classOf[TemporalProjectedExtent],
         classOf[Tile]
       )
 
     val instance = AccumuloInstance("gis", "localhost", "root", new PasswordToken("secret"))
-    val writer = new CustomAccumuloLayerWriter[Tile, RasterMetaData](instance, "test_custom")
+    val attributeStore = AccumuloAttributeStore(instance.connector)
+    val writer = new AccumuloLayerWriter(attributeStore, instance, "test_custom", AccumuloLayerWriter.Options.DEFAULT)
 
     processSourceTiles(layerName, sourceTiles, writer.attributeStore, writer, Some(100))
   }
@@ -245,7 +245,7 @@ object NEXIngest {
 
     val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
     val attributeStore = AccumuloAttributeStore(instance.connector)
-    val writer = new CustomAccumuloLayerWriter[Tile, RasterMetaData](instance, "tiles")
+    val writer = new AccumuloLayerWriter(attributeStore, instance, "tiles", AccumuloLayerWriter.Options.DEFAULT)
 
     processSourceTiles(layerName, s3SourceTiles(bucket, prefix), attributeStore, writer)
   }

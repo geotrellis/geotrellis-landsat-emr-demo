@@ -1,3 +1,9 @@
+val deps = Seq(
+  "com.azavea.geotrellis" %% "geotrellis-accumulo" % Version.geotrellis,
+  "com.azavea.geotrellis" %% "geotrellis-s3" % Version.geotrellis,
+  "com.azavea.geotrellis" %% "geotrellis-spark" % Version.geotrellis
+)
+
 lazy val commonSettings = Seq(
   version := "0.1.0",
   scalaVersion := "2.10.5",
@@ -24,15 +30,12 @@ lazy val commonSettings = Seq(
 ) ++ net.virtualvoid.sbt.graph.Plugin.graphSettings
 
 lazy val root = Project("demo", file("."))
-  .aggregate(ingest, server, core)
-
-lazy val core = Project("core", file("core"))
-  .settings(commonSettings: _*)
+  .aggregate(ingest, server)
 
 lazy val ingest = Project("ingest", file("ingest"))
-  .dependsOn(core)
   .settings(commonSettings: _*)
+  .settings(libraryDependencies ++= deps)
 
 lazy val server = Project("server", file("server"))
-  .dependsOn(core)
   .settings(commonSettings: _*)
+  .settings(libraryDependencies ++= deps)

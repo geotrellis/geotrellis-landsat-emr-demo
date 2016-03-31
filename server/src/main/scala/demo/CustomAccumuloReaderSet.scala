@@ -19,9 +19,9 @@ class CustomAccumuloReaderSet(instance: AccumuloInstance)(implicit sc: SparkCont
   val attributeStore = AccumuloAttributeStore(instance.connector)
 
   val metadataReader =
-    new MetadataReader {
+    new MetadataReader[SpaceTimeKey] {
       def initialRead(layer: LayerId) = {
-        val rmd = attributeStore.read[RasterMetaData](layer, "metadata")
+        val rmd = attributeStore.read[TileLayerMetadata[SpaceTimeKey]](layer, "metadata")
         val times = attributeStore.read[Array[Long]](LayerId(layer.name, 0), "times")
         LayerMetadata(rmd, times)
       }
@@ -36,9 +36,11 @@ class CustomAccumuloReaderSet(instance: AccumuloInstance)(implicit sc: SparkCont
         attributeStore.read[T](LayerId(layerName, 0), attributeName)
     }
 
-  val singleBandLayerReader = new CustomAccumuloLayerReader[Tile, RasterMetaData](instance)
-  val singleBandTileReader = new TileReader(new CustomAccumuloTileReader[Tile](instance))
+  implicit val _instance = instance
 
-  val multiBandLayerReader = new CustomAccumuloLayerReader[MultiBandTile, RasterMetaData](instance)
-  val multiBandTileReader = new TileReader(new CustomAccumuloTileReader[MultiBandTile](instance))
+  val singleBandLayerReader = new AccumuloLayerReader(attributeStore)
+  val singleBandTileReader = new TileReader(new AccumuloTileReader[SpaceTimeKey, Tile](instance, attributeStore))
+
+  val multiBandLayerReader = new AccumuloLayerReader(attributeStore)
+  val multiBandTileReader = new TileReader(new AccumuloTileReader[SpaceTimeKey, MultibandTile](instance, attributeStore))
 }
