@@ -18,27 +18,11 @@ import spray.json.DefaultJsonProtocol._
 class AccumuloReaderSet(instance: AccumuloInstance)(implicit sc: SparkContext) extends ReaderSet {
   val attributeStore = AccumuloAttributeStore(instance.connector)
 
-  val metadataReader =
-    new MetadataReader {
-      def initialRead(layer: LayerId) = {
-        val rmd = attributeStore.readLayerAttributes[AccumuloLayerHeader, RasterMetaData, KeyBounds[SpaceTimeKey], KeyIndex[SpaceTimeKey], Schema](layer)._2
-        val times = attributeStore.read[Array[Long]](LayerId(layer.name, 0), "times")
-        LayerMetadata(rmd, times)
-      }
+  val metadataReader = new MetadataReader(attributeStore)
 
-      def layerNamesToZooms =
-        attributeStore.layerIds
-          .groupBy(_.name)
-          .map { case (name, layerIds) => (name, layerIds.map(_.zoom).sorted.toArray) }
-          .toMap
-
-      def readLayerAttribute[T: JsonFormat](layerName: String, attributeName: String): T =
-        attributeStore.read[T](LayerId(layerName, 0), attributeName)
-    }
-
-  val singleBandLayerReader = AccumuloLayerReader[SpaceTimeKey, Tile, RasterMetaData](instance)
+  val singleBandLayerReader = AccumuloLayerReader(instance)
   val singleBandTileReader = new TileReader(AccumuloTileReader[SpaceTimeKey, Tile](instance))
 
-  val multiBandLayerReader = AccumuloLayerReader[SpaceTimeKey, MultiBandTile, RasterMetaData](instance)
-  val multiBandTileReader = new TileReader(AccumuloTileReader[SpaceTimeKey, MultiBandTile](instance))
+  val multiBandLayerReader = AccumuloLayerReader(instance)
+  val multiBandTileReader = new TileReader(AccumuloTileReader[SpaceTimeKey, MultibandTile](instance))
 }

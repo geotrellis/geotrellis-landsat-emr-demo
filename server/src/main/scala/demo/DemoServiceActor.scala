@@ -1,19 +1,16 @@
 package demo
 
 import geotrellis.raster._
-import geotrellis.raster.op.local._
 import geotrellis.raster.io.geotiff._
 import geotrellis.raster.render._
 import geotrellis.raster.resample._
-import geotrellis.raster.op.stats._
+import geotrellis.raster.rasterize._
 import geotrellis.raster.histogram._
 import geotrellis.spark._
 import geotrellis.spark.io._
-import geotrellis.spark.op.stats._
-import geotrellis.spark.op.zonal.summary._
 import geotrellis.spark.tiling._
 import geotrellis.vector._
-import geotrellis.vector.io.json._
+import geotrellis.vector.io._
 import geotrellis.vector.reproject._
 import geotrellis.proj4._
 
@@ -28,10 +25,11 @@ import spray.http.MediaTypes
 import spray.http.HttpHeaders.RawHeader
 import spray.httpx.SprayJsonSupport._
 import spray.json._
+import spray.json.DefaultJsonProtocol._
 
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
-
+import com.github.nscala_time.time.Imports._
 import scala.concurrent._
 import spire.syntax.cfor._
 
@@ -41,9 +39,10 @@ class DemoServiceActor(
 ) extends Actor with HttpService {
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  val dateTimeFormat = Main.dateTimeFormat
+  val dateTimeFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ")
 
   val metadataReader = readerSet.metadataReader
+  val attributeStore = readerSet.attributeStore
 
   def isLandsat(name: String) =
     name.contains("landsat")
@@ -72,12 +71,14 @@ class DemoServiceActor(
         complete {
           future {
             val layerInfo =
-              metadataReader.layerNamesToZooms
+              metadataReader.layerNamesToZooms //Map[String, Array[Int]]
                 .keys
                 .toList
                 .sorted
                 .map { name =>
-                  val metadata = metadataReader.read(LayerId(name, 0))
+                /** TODO problem here is that we're need to list all metadata, but we don't know what each layer key is */
+
+                val metadata = metadataReader.read(LayerId(name, 0)) // bug ?
                   val extent =
                     metadata.rasterMetaData.extent.reproject(metadata.rasterMetaData.crs, LatLng)
                   val times =
@@ -133,7 +134,7 @@ class DemoServiceActor(
             future {
               if(isLandsat(layer)) {
                 val tileOpt =
-                  readerSet.readMultiBandTile(layer, zoom, x, y, time)
+                  readerSet.readMultibandTile(layer, zoom, x, y, time)
 
                 tileOpt.map { tile =>
                   val png =
@@ -154,7 +155,7 @@ class DemoServiceActor(
                   png.bytes
                 }
               } else {
-                readerSet.readSingleBandTile(layer, zoom, x, y, time)
+                readerSet.readSinglebandTile(layer, zoom, x, y, time)
                   .map { tile =>
                     val breaks = breaksStrOpt.get.split(',').map(_.toInt)
                     Render.temperature(tile, breaks).bytes
@@ -172,7 +173,7 @@ class DemoServiceActor(
       import spray.json.DefaultJsonProtocol._
       cors {
         get {
-          parameters('time1, 'time2, 'operation ?) { (time1Str, time2Str, operationOpt) =>
+          parameters('time1, 'time2) { (time1Str, time2Str) =>
             complete {
               future {
                 val zooms = metadataReader.layerNamesToZooms(layerName)
@@ -181,17 +182,17 @@ class DemoServiceActor(
                 val time2 = DateTime.parse(time2Str, dateTimeFormat)
 
                 readerSet.singleBandLayerReader
-                  .query(LayerId(layerName, mid))
+                  .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layerName, mid))
                   .where(Between(time1, time1))
-                  .toRDD
+                  .result
                   .withContext { rdd =>
                     rdd.union(
                       readerSet.singleBandLayerReader
-                        .query(LayerId(layerName, mid))
+                        .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layerName, mid))
                         .where(Between(time2, time2))
-                        .toRDD
+                        .result
                     )
-                  }.map { case (key, tile) => (key.spatialComponent, (key, tile)) }
+                  }.map { case (key, tile) => (key.spatialKey, (key, tile)) }
                   .reduceByKey { case ((key1, tile1), (key2, tile2)) =>
                     val tile =
                       if(key1.instant == time1.instant) { tile1 - tile2 }
@@ -200,8 +201,8 @@ class DemoServiceActor(
                     (key1, tile)
                   }
                   .map { case (_, (_, tile)) => tile.histogram }
-                  .reduce { (h1, h2) => FastMapHistogram.fromHistograms(Array(h1, h2)) }
-                  .getQuantileBreaks(15)
+                  .reduce { (h1, h2) => h1 merge h2 }
+                  .quantileBreaks(15)
               }
             }
           }
@@ -217,11 +218,11 @@ class DemoServiceActor(
             future {
               if(isLandsat(layer)) {
                 val tileOpt1 =
-                  readerSet.readMultiBandTile(layer, zoom, x, y, time1)
+                  readerSet.readMultibandTile(layer, zoom, x, y, time1)
 
                 val tileOpt2 =
                   tileOpt1.flatMap { tile1 =>
-                    readerSet.readMultiBandTile(layer, zoom, x, y, time2).map { tile2 => (tile1, tile2) }
+                    readerSet.readMultibandTile(layer, zoom, x, y, time2).map { tile2 => (tile1, tile2) }
                   }
 
                 tileOpt2.map { case (tile1, tile2) =>
@@ -244,11 +245,11 @@ class DemoServiceActor(
                 }
               } else {
                 val tileOpt1 =
-                  readerSet.readSingleBandTile(layer, zoom, x, y, time1)
+                  readerSet.readSinglebandTile(layer, zoom, x, y, time1)
 
                 val tileOpt2 =
                   tileOpt1.flatMap { tile1 =>
-                    readerSet.readSingleBandTile(layer, zoom, x, y, time2).map { tile2 => (tile1, tile2) }
+                    readerSet.readSinglebandTile(layer, zoom, x, y, time2).map { tile2 => (tile1, tile2) }
                   }
 
                 tileOpt2.map { case (tile1, tile2) =>
@@ -277,18 +278,18 @@ class DemoServiceActor(
                 val time2 = DateTime.parse(time2Str, dateTimeFormat)
 
                 readerSet.singleBandLayerReader
-                  .query(LayerId(layerName1, mid))
+                  .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layerName1, mid))
                   .where(Between(time1, time1))
-                  .toRDD
+                  .result
                   .withContext { rdd =>
                     rdd.union(
                       readerSet.singleBandLayerReader
-                        .query(LayerId(layerName2, mid))
+                        .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layerName2, mid))
                         .where(Between(time2, time2))
-                        .toRDD
+                        .result
                     )
                   }
-                  .map { case (key, tile) => (key.spatialComponent, (key, tile)) }
+                  .map { case (key, tile) => (key.spatialKey, (key, tile)) }
                   .reduceByKey { case ((key1, tile1), (key2, tile2)) =>
                     val tile =
                       if(key1.instant == time1.instant) { tile1 - tile2 }
@@ -297,8 +298,8 @@ class DemoServiceActor(
                     (key1, tile)
                   }
                   .map { case (_, (_, tile)) => tile.histogram }
-                  .reduce { (h1, h2) => FastMapHistogram.fromHistograms(Array(h1, h2)) }
-                  .getQuantileBreaks(15)
+                  .reduce { (h1, h2) => h1 merge h2 }
+                  .quantileBreaks(15)
               }
             }
           }
@@ -314,11 +315,11 @@ class DemoServiceActor(
           complete {
             future {
               val tileOpt1 =
-                readerSet.readSingleBandTile(layer1, zoom, x, y, time1)
+                readerSet.readSinglebandTile(layer1, zoom, x, y, time1)
 
               val tileOpt2 =
                 tileOpt1.flatMap { tile1 =>
-                  readerSet.readSingleBandTile(layer2, zoom, x, y, time2).map { tile2 => (tile1, tile2) }
+                  readerSet.readSinglebandTile(layer2, zoom, x, y, time2).map { tile2 => (tile1, tile2) }
                 }
 
               tileOpt2.map { case (tile1, tile2) =>
@@ -366,19 +367,19 @@ class DemoServiceActor(
 
                   val maxValues =
                     readerSet.singleBandLayerReader
-                      .query(LayerId(layer1Name, zoom))
+                      .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layer1Name, zoom))
                       .where(Between(time1, time1))
-                      .toRDD
+                      .result
                       .withContext { rdd =>
                         rdd.union(
                           readerSet.singleBandLayerReader
-                            .query(LayerId(layer2Name, zoom))
+                            .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layer2Name, zoom))
                             .where(Between(time2, time2))
-                            .toRDD
+                            .result
                         )
                       }.withContext { rdd =>
                         rdd
-                          .map { case (key, tile) => (key.spatialComponent, (key, tile)) }
+                          .map { case (key, tile) => (key.spatialKey, (key, tile)) }
                           .reduceByKey { case ((key1, tile1), (key2, tile2)) =>
                             val tile =
                               tile1.combine(tile2) { (t1, t2) =>
@@ -399,7 +400,7 @@ class DemoServiceActor(
                         val results = Array.ofDim[Int](stateLength)
                         cfor(0)(_ < stateLength, _ + 1) { i =>
                           var max = Int.MinValue
-                          reprojectedStates(i).geom.foreachCell(raster) { (col, row) =>
+                          raster.rasterExtent.foreach(reprojectedStates(i).geom) { (col, row) =>
                             val z = raster.tile.get(col, row)
                             if(isData(z)) {
                               if(z > max) max = z
@@ -464,19 +465,19 @@ class DemoServiceActor(
 
                   val (sums, counts) =
                     readerSet.singleBandLayerReader
-                      .query(LayerId(layer1Name, zoom))
+                      .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layer1Name, zoom))
                       .where(Between(time1, time1))
-                      .toRDD
+                      .result
                       .withContext { rdd =>
                         rdd.union(
                           readerSet.singleBandLayerReader
-                            .query(LayerId(layer2Name, zoom))
+                            .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layer2Name, zoom))
                             .where(Between(time2, time2))
-                            .toRDD
+                            .result
                         )
                       }.withContext { rdd =>
                         rdd
-                          .map { case (key, tile) => (key.spatialComponent, (key, tile)) }
+                          .map { case (key, tile) => (key.spatialKey, (key, tile)) }
                           .reduceByKey { case ((key1, tile1), (key2, tile2)) =>
                             val tile =
                               tile1.combine(tile2) { (t1, t2) =>
@@ -498,7 +499,7 @@ class DemoServiceActor(
                         cfor(0)(_ < stateLength, _ + 1) { i =>
                           var sum = 0
                           var count = 0
-                          reprojectedStates(i).geom.foreachCell(raster) { (col, row) =>
+                          raster.rasterExtent.foreach(reprojectedStates(i).geom) { (col, row) =>
                             val z = raster.tile.get(col, row)
                             if(isData(z)) {
                               sum += math.abs(z)
@@ -560,7 +561,7 @@ class DemoServiceActor(
               val metadata = metadataReader.read(LayerId(layer, zoom))
               val extent =
                     metadata.rasterMetaData.mapTransform(SpatialKey(x, y))
-              readerSet.readSingleBandTile(layer, zoom, x, y, time)
+              readerSet.readSinglebandTile(layer, zoom, x, y, time)
                 .map { tile =>
                   val masked =
                     tile.mask(extent, state.geom)
@@ -583,11 +584,11 @@ class DemoServiceActor(
 
               val mean =
                 readerSet.singleBandLayerReader
-                  .query(LayerId(layer, zoom))
+                  .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layer, zoom))
                   .where(Between(time, time))
                   .where(Intersects(state.geom))
-                  .toRDD
-                  .zonalMean(state.geom)
+                  .result
+                  .polygonalMean(state.geom)
               state
                 .mapGeom(geom => geom.reproject(WebMercator, LatLng))
                 .mapData { d =>
@@ -617,20 +618,20 @@ class DemoServiceActor(
                 val time2 = DateTime.parse(time2Str, dateTimeFormat)
 
                 readerSet.singleBandLayerReader
-                  .query(LayerId(layerName1, mid))
+                  .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layerName1, mid))
                   .where(Between(time1, time1))
                   .where(Intersects(state.geom))
-                  .toRDD
+                  .result
                   .withContext { rdd =>
                     rdd.union(
                       readerSet.singleBandLayerReader
-                        .query(LayerId(layerName2, mid))
+                        .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layerName2, mid))
                         .where(Between(time2, time2))
                         .where(Intersects(state.geom))
-                        .toRDD
+                        .result
                     )
                   }
-                  .map { case (key, tile) => (key.spatialComponent, (key, tile)) }
+                  .map { case (key, tile) => (key.spatialKey, (key, tile)) }
                   .reduceByKey { case ((key1, tile1), (key2, tile2)) =>
                     val tile =
                       if(key1.instant == time1.getMillis) { tile1 - tile2 }
@@ -639,8 +640,8 @@ class DemoServiceActor(
                     (key1, tile)
                   }
                   .map { case (_, (_, tile)) => tile.histogram }
-                  .reduce { (h1, h2) => FastMapHistogram.fromHistograms(Array(h1, h2)) }
-                  .getQuantileBreaks(15)
+                  .reduce { (h1, h2) => h1 merge h2 }
+                  .quantileBreaks(15)
               }
             }
           }
@@ -665,11 +666,11 @@ class DemoServiceActor(
           complete {
             future {
               val tileOpt1 =
-                readerSet.readSingleBandTile(layer1, zoom, x, y, time1)
+                readerSet.readSinglebandTile(layer1, zoom, x, y, time1)
 
               val tileOpt2 =
                 tileOpt1.flatMap { tile1 =>
-                  readerSet.readSingleBandTile(layer2, zoom, x, y, time2).map { tile2 => (tile1, tile2) }
+                  readerSet.readSinglebandTile(layer2, zoom, x, y, time2).map { tile2 => (tile1, tile2) }
                 }
 
               tileOpt2.map { case (tile1, tile2) =>
@@ -694,19 +695,19 @@ class DemoServiceActor(
 
               val mean =
                 readerSet.singleBandLayerReader
-                  .query(LayerId(layer1, zoom))
+                  .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layer1, zoom))
                   .where(Between(time1, time1))
                   .where(Intersects(state.geom))
-                  .toRDD
+                  .result
                   .withContext { rdd =>
                     rdd.union(
                       readerSet.singleBandLayerReader
-                        .query(LayerId(layer2, zoom))
+                        .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId(layer2, zoom))
                         .where(Between(time2, time2))
                         .where(Intersects(state.geom))
-                        .toRDD
+                        .result
                     )
-                    .map { case (key, tile) => (key.spatialComponent, (key, tile)) }
+                    .map { case (key, tile) => (key.spatialKey, (key, tile)) }
                     .groupByKey
                     .mapValues { tiles =>
                       val Seq((key1, tile1), (key2, tile2)) = tiles
@@ -717,7 +718,8 @@ class DemoServiceActor(
                       tile
                     }
                   }
-                  .zonalMean(state)
+                  .mapContext{ md => md.copy(bounds = for (b <- md.bounds) yield KeyBounds(b.minKey.spatialKey, b.maxKey.spatialKey)) }
+                  .polygonalMean(state)
 
               state
                 .mapGeom(geom => geom.reproject(WebMercator, LatLng))

@@ -71,7 +71,7 @@ object Main {
         val password = new PasswordToken("secret")
         val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
 
-        new CustomAccumuloReaderSet(instance)
+        new AccumuloReaderSet(instance)
       } else if(args(0) == "s3"){
         val bucket = args(1)
         val prefix = args(2)
@@ -92,7 +92,7 @@ object Main {
         val password = new PasswordToken(args(4))
         val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
 
-        new CustomAccumuloReaderSet(instance)
+        new AccumuloReaderSet(instance)
       } else {
         sys.error(s"Unknown catalog type ${args(0)}")
       }
