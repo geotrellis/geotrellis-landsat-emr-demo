@@ -10,6 +10,7 @@ import geotrellis.spark._
 import geotrellis.spark.io._
 import geotrellis.spark.io.index._
 import geotrellis.spark.io.s3._
+import geotrellis.spark.io.file._
 import geotrellis.spark.io.accumulo._
 import geotrellis.spark.util._
 import geotrellis.spark.tiling._
@@ -17,6 +18,7 @@ import geotrellis.proj4._
 import geotrellis.spark.ingest._
 import com.azavea.landsatutil.{S3Client => lsS3Client, _}
 
+import spray.json.DefaultJsonProtocol._
 import org.apache.spark._
 import org.apache.spark.rdd._
 import org.apache.accumulo.core.client.security.tokens._
@@ -63,9 +65,17 @@ object LandsatIngest {
       resampleMethod = Bilinear,
       pyramid = true
     ){ (rdd, zoom) =>
-      // TODO write times contained in the layer
-      // attributeStore.write(LayerId(layerName, 0), "times", lastRdd.map(_._1.instant).collect.toArray)
       writer.write(LayerId(layerName, zoom), rdd, ZCurveKeyIndexMethod.byMonth() )
+      if (zoom == 1) {
+        // more efficient to do it when spatial dimension is smallest
+        writer.attributeStore.write(
+          LayerId(layerName, 0), "times",
+          rdd
+            .map(_._1.instant)
+            .countByValue
+            .keys.toArray
+            .sorted)
+      }
     }
   }
 
@@ -75,11 +85,12 @@ object IngestLandsatMain {
   def main(args: Array[String]): Unit = {
     implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
     val philly = GeoJson.fromFile[Polygon]("/Users/eugene/philly.json")
+    val instance = AccumuloInstance("gis", "localhost", "root", new PasswordToken("secret"))
+    // val writer = AccumuloLayerWriter(instance, "tiles", HdfsWriteStrategy("hdfs://localhost:9000/geotrellis-ingest"))
+    // val writer = S3LayerWriter("bucket", "catalog")
+    val writer = FileLayerWriter("/Users/eugene/tmp/catalog")
+
     try {
-      // val writer = S3LayerWriter("bucket", "catalog")
-      val instance = AccumuloInstance("gis", "localhost", "root", new PasswordToken("secret"))
-      val writer = AccumuloLayerWriter(instance, "tiles", HdfsWriteStrategy("hdfs://localhost:9000/geotrellis-ingest")
-)
       val images = Landsat8Query()
         .withStartDate(new DateTime(2012, 1, 12, 0, 0, 0))
         .withEndDate(new DateTime(2015, 11, 5, 0, 0, 0))
