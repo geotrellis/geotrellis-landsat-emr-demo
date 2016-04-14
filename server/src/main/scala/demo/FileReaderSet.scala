@@ -17,12 +17,8 @@ import spray.json.DefaultJsonProtocol._
 
 class FileReaderSet(path: String)(implicit sc: SparkContext) extends ReaderSet {
   val attributeStore = FileAttributeStore(path)
-
   val metadataReader = new MetadataReader(attributeStore)
-
-  val singleBandLayerReader = FileLayerReader(attributeStore)
-  val singleBandTileReader = new TileReader(FileTileReader[SpaceTimeKey, Tile](path))
-
-  val multiBandLayerReader = FileLayerReader(attributeStore)
-  val multiBandTileReader = new TileReader(FileTileReader[SpaceTimeKey, MultibandTile](path))
+  val layerReader = FileLayerReader(attributeStore)
+  val singleBandTileReader = new TileReader[SpaceTimeKey, Tile](FileValueReader(path))
+  val multiBandTileReader = new TileReader[SpaceTimeKey, MultibandTile](FileValueReader(path))
 }

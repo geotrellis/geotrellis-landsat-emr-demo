@@ -18,9 +18,8 @@ trait ReaderSet {
   val layoutScheme = ZoomedLayoutScheme(WebMercator, 256)
   def attributeStore: AttributeStore
   def metadataReader: MetadataReader
-  def singleBandLayerReader: FilteringLayerReader[LayerId]
+  def layerReader: FilteringLayerReader[LayerId]
   def singleBandTileReader: TileReader[SpaceTimeKey, Tile]
-  def multiBandLayerReader: FilteringLayerReader[LayerId]
   def multiBandTileReader: TileReader[SpaceTimeKey, MultibandTile]
 
   /** Do "overzooming", where we resample lower zoom level tiles to serve out higher zoom level tiles. */

@@ -28,3 +28,5 @@ _SUCCESS
 *.swo
 *.sublime-*
 .vagrant
+
+tags

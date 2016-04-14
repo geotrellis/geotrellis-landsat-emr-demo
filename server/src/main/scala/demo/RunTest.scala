@@ -36,7 +36,7 @@ object RunTest {
     val time = DateTime.parse("2056-01-16T13:00:00-0400")
 
     val layer =
-      readerSet.singleBandLayerReader
+      readerSet.layerReader
         .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId("Climate_CCSM4-RCP45-Temperature-Max", 8))
         .where(Between(time, time))
         .result

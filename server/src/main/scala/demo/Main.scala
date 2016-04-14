@@ -50,7 +50,7 @@ object Main {
     * accumulo INSTANCE ZOOKEEPER USER PASSWORD
     */
   def main(args: Array[String]): Unit = {
-    val conf =
+    val conf: SparkConf =
       new SparkConf()
         .setIfMissing("spark.master", "local[*]")
         .setAppName("Demo Server")
@@ -111,7 +111,7 @@ object Main {
         system.actorOf(Props(classOf[DemoServiceActor], readerSet, sc), "demo")
 
       // start a new HTTP server on port 8088 with our service actor as the handler
-      IO(Http) ! Http.Bind(service, "0.0.0.0", 8088)
+      IO(Http) ! Http.Bind(service, "0.0.0.0", 8899)
     }
   }
 }

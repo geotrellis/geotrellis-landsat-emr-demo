@@ -6,21 +6,16 @@ import geotrellis.spark.io.avro._
 
 import spray.json._
 
-import java.util.concurrent.ConcurrentHashMap
+import scala.collection.concurrent.TrieMap
 import scala.reflect._
 
-class TileReader[K: AvroRecordCodec: JsonFormat: ClassTag, V: AvroRecordCodec](tileReader: Reader[LayerId, Reader[K, V]]) {
-  private val cache = new ConcurrentHashMap[LayerId, Reader[K, V]]
+class TileReader[K: AvroRecordCodec: JsonFormat: ClassTag, V: AvroRecordCodec](
+  valueReader: ValueReader[LayerId]
+) {
+  private val cache = new TrieMap[LayerId, Reader[K, V]]
 
   def read(layerId: LayerId, key: K): V = {
-    val reader =
-      if(cache.containsKey(layerId))
-        cache.get(layerId)
-      else {
-        val value = tileReader(layerId)
-        cache.put(layerId, value)
-        value
-      }
+    val reader = cache.getOrElseUpdate(layerId, valueReader.reader[K,V](layerId))
     reader.read(key)
   }
 }

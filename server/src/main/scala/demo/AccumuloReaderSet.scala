@@ -17,12 +17,8 @@ import spray.json.DefaultJsonProtocol._
 
 class AccumuloReaderSet(instance: AccumuloInstance)(implicit sc: SparkContext) extends ReaderSet {
   val attributeStore = AccumuloAttributeStore(instance.connector)
-
   val metadataReader = new MetadataReader(attributeStore)
-
-  val singleBandLayerReader = AccumuloLayerReader(instance)
-  val singleBandTileReader = new TileReader(AccumuloTileReader[SpaceTimeKey, Tile](instance))
-
-  val multiBandLayerReader = AccumuloLayerReader(instance)
-  val multiBandTileReader = new TileReader(AccumuloTileReader[SpaceTimeKey, MultibandTile](instance))
+  val layerReader = AccumuloLayerReader(instance)
+  val singleBandTileReader = new TileReader[SpaceTimeKey, Tile](AccumuloValueReader(instance))
+  val multiBandTileReader = new TileReader[SpaceTimeKey, MultibandTile](AccumuloValueReader(instance))
 }

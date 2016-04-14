@@ -12,8 +12,7 @@ libraryDependencies ++= Seq(
   "com.azavea.geotrellis" %% "geotrellis-s3" % Version.geotrellis,
   "com.azavea.geotrellis" %% "geotrellis-accumulo" % Version.geotrellis,
   "org.apache.spark" %% "spark-core" % "1.5.2" % "provided",
-  Dependencies.sprayRouting,
-  Dependencies.sprayCan,
+  "com.github.scopt" %% "scopt" % "3.3.0",
   "org.scalatest"       %%  "scalatest"      % "2.2.0" % "test"
 )
 
@@ -27,5 +26,4 @@ assemblyMergeStrategy in assembly := {
   case _ => MergeStrategy.first
 }
 
-Revolver.settings
 net.virtualvoid.sbt.graph.Plugin.graphSettings
