@@ -84,7 +84,7 @@ object LandsatSource extends Logging {
 }
 
 
-object LandsatIngest {
+object LandsatIngest extends Logging {
 
   /** Calculate the layer metadata for the incoming landsat images
     *
@@ -99,7 +99,7 @@ object LandsatIngest {
 
   def calculateTileLayerMetadata(maxZoom: Int, destCRS: CRS, images: Seq[LandsatImage]) = {
     val layoutDefinition = ZoomedLayoutScheme.layoutForZoom(maxZoom, destCRS.worldExtent, 256)
-    val imageExtent = images.map(_.footprint.envelope).reduce(_ combine _)
+    val imageExtent = images.map(_.footprint.envelope).reduce(_ combine _).reproject(LatLng, destCRS)
     val dateMin = images.map(_.aquisitionDate).min
     val dateMax = images.map(_.aquisitionDate).max
     val GridBounds(colMin, rowMin, colMax, rowMax) = layoutDefinition.mapTransform(imageExtent)
@@ -153,6 +153,7 @@ object LandsatIngest {
     val layoutScheme = ZoomedLayoutScheme(destCRS, 256)
     val reprojected = fetch(images, fetchMethod)
     val tileLayerMetadata = calculateTileLayerMetadata(maxZoom, destCRS, images)
+    logger.info("sTileLayerMetadata calculated: $tileLayerMetadata")
     val tiledRdd = reprojected.tileToLayout(tileLayerMetadata, resampleMethod)
     val rdd = new ContextRDD(tiledRdd, tileLayerMetadata)
 
