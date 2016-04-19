@@ -34,7 +34,11 @@ case class Config (
     case "file" =>
       FileLayerWriter(params("path"))
     case "accumulo" =>
-      val instance = AccumuloInstance(params("instance"), params("zookeeper"), params("user"), new PasswordToken(params("password")))
+      val zookeeper: String = params.get("zookeeper").getOrElse {
+        val conf = new Configuration // if not specified assume zookeeper is same as DFS master
+        new URI(conf.get("fs.defaultFS")).getHost
+      }
+      val instance = AccumuloInstance(params("instance"), zookeeper, params("user"), new PasswordToken(params("password")))
       val strategy = params.get("ingestPath") match {
         case Some(path) => HdfsWriteStrategy(path)
         case None => SocketWriteStrategy()
