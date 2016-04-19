@@ -1,0 +1,57 @@
+[
+  {
+    "Classification": "spark",
+    "Properties": {
+      "maximizeResourceAllocation": "false",
+      "spark.dynamicAllocation.enabled": "true"
+    }
+  },
+  {
+    "Classification": "hdfs-site",
+    "Properties": {
+      "dfs.replication": 1
+    }
+  },
+  {
+    "Classification": "hadoop-env",
+    "Configurations": [
+      {
+        "Classification": "export",
+        "Properties": {
+          "GDAL_DATA": "/usr/local/share/gdal",
+          "LD_LIBRARY_PATH": "/usr/local/lib",
+          "PYSPARK_PYTHON": "python27",
+          "PYSPARK_DRIVER_PYTHON": "python27"
+        }
+      }
+    ]
+  },
+  {
+    "Classification": "spark-env",
+    "Configurations": [
+      {
+        "Classification": "export",
+        "Properties": {
+          "GDAL_DATA": "/usr/local/share/gdal",
+          "LD_LIBRARY_PATH": "/usr/local/lib",
+          "PYSPARK_PYTHON": "python27",
+          "PYSPARK_DRIVER_PYTHON": "python27"
+        }
+      }
+    ]
+  },
+  {
+    "Classification": "yarn-env",
+    "Configurations": [
+      {
+        "Classification": "export",
+        "Properties": {
+          "GDAL_DATA": "/usr/local/share/gdal",
+          "LD_LIBRARY_PATH": "/usr/local/lib",
+          "PYSPARK_PYTHON": "python27",
+          "PYSPARK_DRIVER_PYTHON": "python27"
+        }
+      }
+    ]
+  }
+]
