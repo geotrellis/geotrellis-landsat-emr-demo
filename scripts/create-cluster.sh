@@ -20,4 +20,4 @@ aws emr create-cluster \
   --bootstrap-action Path=$EMR_TARGET/4/bootstrap-geowave.sh,Name=Bootstrap_GeoWave_Node \
   --steps \
     Type=CUSTOM_JAR,Name=WaitForInit,Jar=$SCRIPT_RUNNER,Args=[$EMR_TARGET/wait-for-accumulo.sh] \
-    Type=CUSTOM_JAR,Name=TileService,Jar=$SCRIPT_RUNNER,Args=[$EMR_TARGET/start-server.sh,$EMR_TARGET/server-assembly-0.1.0.jar]
+    Type=CUSTOM_JAR,Name=TileService,Jar=$SCRIPT_RUNNER,Args=[$EMR_TARGET/tile-server.sh,$EMR_TARGET/server-assembly-0.1.0.jar]
