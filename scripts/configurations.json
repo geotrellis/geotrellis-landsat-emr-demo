@@ -9,7 +9,7 @@
   {
     "Classification": "hdfs-site",
     "Properties": {
-      "dfs.replication": 1
+      "dfs.replication": "1"
     }
   },
   {
