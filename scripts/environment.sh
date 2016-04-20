@@ -1,8 +1,7 @@
 EMR_TARGET=s3://geotrellis-test/emr
+KEY_NAME=geotrellis-cluster
 
 AWS_REGION="us-east-1"
-
-KEY_NAME=geotrellis-cluster
 
 MASTER_INSTANCE=m3.xlarge
 MASTER_PRICE=0.15
