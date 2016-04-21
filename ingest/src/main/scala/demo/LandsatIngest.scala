@@ -186,8 +186,8 @@ object LandsatIngestMain extends Logging {
     val s3Client = com.azavea.landsatutil.S3Client()
 
     val images = Landsat8Query()
-      .withStartDate(new DateTime(2012, 1, 12, 0, 0, 0))
-      .withEndDate(new DateTime(2015, 11, 5, 0, 0, 0))
+      .withStartDate(config.startDate.toDateTimeAtStartOfDay)
+      .withEndDate(config.endDate.toDateTimeAtStartOfDay)
       .withMaxCloudCoverage(config.maxCloudCoverage)
       .intersects(config.polygon)
       .collect()

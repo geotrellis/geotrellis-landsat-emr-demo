@@ -15,6 +15,7 @@ import org.apache.commons.io.IOUtils
 import org.apache.hadoop.fs._
 import org.apache.hadoop.conf._
 import spray.json._
+import org.joda.time._
 
 import java.net.URI
 import java.io.File
@@ -24,6 +25,8 @@ case class Config (
   output: String,
   params: Map[String, String],
   maxCloudCoverage: Double = 100.0,
+  startDate: LocalDate = new LocalDate(2014,1,1),
+  endDate: LocalDate = new LocalDate(2015,1,1),
   layerName: String = "landsat",
   cache: Option[File] = None,
   limit: Option[Int] = None
@@ -57,6 +60,9 @@ case class Config (
 }
 
 object Config {
+  implicit val localDateRead: scopt.Read[LocalDate] =
+  scopt.Read.reads(LocalDate.parse)
+
   val parser = new scopt.OptionParser[Config]("scopt") {
     head("landsat import", "0.x")
 
@@ -71,6 +77,12 @@ object Config {
 
     opt[Double]('c', "maxCloudCoverage")
       .action { (x, c) => c.copy(maxCloudCoverage = x) }
+
+    opt[LocalDate]("startDate")
+      .action { (x, c) => c.copy(startDate = x) }
+
+    opt[LocalDate]("endDate")
+      .action { (x, c) => c.copy(endDate = x) }
 
     opt[Int]('l', "limit")
       .action { (x, c) => c.copy(limit = Some(x)) }

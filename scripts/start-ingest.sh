@@ -37,6 +37,8 @@ ARGS=$ARGS,--conf,spark.yarn.driver.memoryOverhead=512
 ARGS=$ARGS,$EMR_TARGET/ingest-assembly-0.1.0.jar
 ARGS=$ARGS,--layerName,landsat
 ARGS=$ARGS,--polygonUri,$EMR_TARGET/polygon.json
+ARGS=$ARGS,--startDate,2015-08-01,
+ARGS=$ARGS,--endDate,2016-01-01,
 # ARGS=$ARGS,--limit,4
 ARGS=$ARGS,--output,accumulo
 ARGS=$ARGS,--params,\"instance=accumulo,table=tiles,user=root,password=secret\"
