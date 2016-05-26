@@ -1,5 +1,6 @@
 
-
+scripts/cluster-id.txt
+scripts/last-step-id.txt
 project/boot
 project/plugins/project
 project/plugins/target
