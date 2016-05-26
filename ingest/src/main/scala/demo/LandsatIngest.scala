@@ -30,60 +30,6 @@ import java.net._
 import java.io._
 import org.apache.commons.io.IOUtils
 
-
-object LandsatSource extends Logging {
-  def localCache(cacheFile: File, freshStream: => InputStream): InputStream = {
-    if (cacheFile.exists) {
-       new FileInputStream(cacheFile)
-    } else {
-      cacheFile.getParentFile.mkdirs()
-      val out = new FileOutputStream(cacheFile)
-      try {
-        IOUtils.copy(freshStream, out)
-        new FileInputStream(cacheFile)
-      } finally { out.close; freshStream.close }
-    }
-  }
-
-  def localCache(cacheFile: Option[File], freshStream: => InputStream): InputStream = {
-    cacheFile match {
-      case Some(file) => localCache(file, freshStream)
-      case None => freshStream
-    }
-  }
-
-  // this will allow us to use only one s3 client per executor
-  @transient lazy val s3client: S3Client = S3Client.default
-  def s3(bandsWanted: Seq[String], image: LandsatImage, cacheDir: Option[File] = None): ProjectedRaster[MultibandTile] = {
-    val tifs =
-      for (band <- bandsWanted) yield {
-        val uri = new URI(image.bandUri(band))
-        logger.info(s"Getting '$uri' for band '$band'")
-        val bucket = uri.getAuthority
-        val prefix = uri.getPath.drop(1)
-        val cacheFile = cacheDir.map (new File(_, prefix))
-        val bytes = IOUtils.toByteArray(
-          localCache(cacheFile, s3client.getObject(bucket, prefix).getObjectContent)
-        )
-        GeoTiffReader.readSingleband(bytes)
-      }
-    val tiles = tifs.map(_.tile).toArray
-    val extent = tifs.head.extent
-    val crs = tifs.head.crs
-    ProjectedRaster(MultibandTile(tiles), extent, crs)
-  }
-
-  def httpTarBall(bandsWanted: Seq[String], img: LandsatImage, cacheDir: Option[File]): ProjectedRaster[MultibandTile] = {
-    val url = new URL(img.googleUrl)
-    val bytes = IOUtils.toByteArray(
-      localCache(cacheDir.map(new File(_, url.getPath)), url.openStream)
-    )
-    val (mtl, raster) = Fetch.fromTar(new ByteArrayInputStream(bytes), bandsWanted)
-    raster
-  }
-}
-
-
 object LandsatIngest extends Logging {
 
   /** Calculate the layer metadata for the incoming landsat images
@@ -183,16 +129,14 @@ object LandsatIngestMain extends Logging {
     val config = Config.parse(args)
     logger.info(s"Config: $config")
 
-    val s3Client = com.azavea.landsatutil.S3Client()
-
     val images = Landsat8Query()
       .withStartDate(config.startDate.toDateTimeAtStartOfDay)
       .withEndDate(config.endDate.toDateTimeAtStartOfDay)
       .withMaxCloudCoverage(config.maxCloudCoverage)
-      .intersects(config.polygon)
+      .intersects(config.bbox)
       .collect()
       .filter{ img =>
-        val exists = s3Client.imageExists(img)
+        val exists = img.imageExistsS3()
         logger.info(s"Scene not found:  ${img.baseS3Path}")
         exists
       }
@@ -213,7 +157,7 @@ object LandsatIngestMain extends Logging {
       LandsatIngest.run(
         layerName = config.layerName,
         images = config.limit.fold(images)(images.take(_)),
-        fetchMethod = LandsatSource.s3(bandsWanted, (_: LandsatImage), config.cache),
+        fetchMethod = _.getRasterFromS3(bandsWanted = bandsWanted, hook = config.cacheHook),
         writer = config.writer)
     } finally {
       sc.stop()

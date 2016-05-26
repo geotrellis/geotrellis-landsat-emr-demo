@@ -7,40 +7,39 @@ case $i in
     CLUSTER_ID="${i#*=}"
     shift
     ;;
-
-    --polygon=*)
-    POLYGON_FILE="${i#*=}"
+    --bbox=*)
+    BBOX="${i#*=}"
     shift
     ;;
 esac
 done
 
-if [[ -z $CLUSTER_ID || -z $POLYGON_FILE ]]
+if [[ -z $CLUSTER_ID || -z $BBOX ]]
 then
-  echo "usage: start-ingest --cluster-id=<CLUSTER_ID> --polygon=<QUERY_POLYGON_GEOJSON_FILE>"
+  echo "usage: start-ingest --cluster-id=<CLUSTER_ID> --BBOX=<xmin,ymin,xmax,ymax>"
   exit
 fi
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-source $DIR/environment.sh
+EXECUTOR_MEMORY=10G
+EXECUTOR_CORES=4
+YARN_OVERHEAD=520
 
-aws s3 cp $POLYGON_FILE $EMR_TARGET/polygon.json
+ARGS="spark-submit,--master,yarn-cluster,\
+--class,demo.LandsatIngestMain,\
+--driver-memory,$EXECUTOR_MEMORY,\
+--executor-cores,$EXECUTOR_CORES,\
+--executor-memory,$EXECUTOR_MEMORY,\
+--conf,spark.dynamicAllocation.enabled=true,\
+--conf,spark.yarn.executor.memoryOverhead=$YARN_OVERHEAD,\
+--conf,spark.yarn.driver.memoryOverhead=$YARN_OVERHEAD,\
+$EMR_TARGET/ingest-assembly-0.1.0.jar,\
+--layerName,landsat,\
+--bbox,\"$BBOX\",\
+--startDate,2015-08-01,\
+--endDate,2016-01-01,\
+--output,accumulo,\
+--params,\"instance=accumulo,table=tiles,user=root,password=secret\",\
+--limit,1"
 
-ARGS=spark-submit,--master,yarn-cluster
-ARGS=$ARGS,--class,demo.LandsatIngestMain
-ARGS=$ARGS,--driver-memory,10G
-ARGS=$ARGS,--executor-cores,4
-ARGS=$ARGS,--executor-memory,10G
-ARGS=$ARGS,--conf,spark.dynamicAllocation.enabled=true
-ARGS=$ARGS,--conf,spark.yarn.executor.memoryOverhead=512
-ARGS=$ARGS,--conf,spark.yarn.driver.memoryOverhead=512
-ARGS=$ARGS,$EMR_TARGET/ingest-assembly-0.1.0.jar
-ARGS=$ARGS,--layerName,landsat
-ARGS=$ARGS,--polygonUri,$EMR_TARGET/polygon.json
-ARGS=$ARGS,--startDate,2015-08-01,
-ARGS=$ARGS,--endDate,2016-01-01,
-# ARGS=$ARGS,--limit,4
-ARGS=$ARGS,--output,accumulo
-ARGS=$ARGS,--params,\"instance=accumulo,table=tiles,user=root,password=secret\"
-
-aws emr add-steps --cluster-id $CLUSTER_ID --steps Type=CUSTOM_JAR,Name=Ingest,Jar=command-runner.jar,Args=[$ARGS]
+aws emr add-steps --output text --cluster-id $CLUSTER_ID \
+    --steps Type=CUSTOM_JAR,Name=Ingest,Jar=command-runner.jar,Args=[$ARGS]

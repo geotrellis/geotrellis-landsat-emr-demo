@@ -1,13 +1,11 @@
+#!/bin/sh
 # Starts a long running ETL cluster.
-
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-source $DIR/environment.sh
 
 SCRIPT_RUNNER=s3://elasticmapreduce/libs/script-runner/script-runner.jar
 
 aws emr create-cluster \
+  --output text \
   --name "Landsat Ingest" \
-  --region $AWS_REGION \
   --release-label emr-4.5.0 \
   --use-default-roles \
   --configurations file://configurations.json \
