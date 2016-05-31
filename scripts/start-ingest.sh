@@ -41,5 +41,6 @@ $EMR_TARGET/ingest-assembly-0.1.0.jar,\
 --params,\"instance=accumulo,table=tiles,user=root,password=secret\",\
 --limit,1"
 
+set -x
 aws emr add-steps --output text --cluster-id $CLUSTER_ID \
     --steps Type=CUSTOM_JAR,Name=Ingest,Jar=command-runner.jar,Args=[$ARGS]
