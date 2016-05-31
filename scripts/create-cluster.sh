@@ -2,13 +2,14 @@
 # Starts a long running ETL cluster.
 
 SCRIPT_RUNNER=s3://elasticmapreduce/libs/script-runner/script-runner.jar
-
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+echo $DIR
 aws emr create-cluster \
   --output text \
   --name "Landsat Ingest" \
   --release-label emr-4.5.0 \
   --use-default-roles \
-  --configurations file://configurations.json \
+  --configurations file://$DIR/configurations.json \
   --log-uri $EMR_TARGET/logs \
   --ec2-attributes KeyName=$KEY_NAME \
   --applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox \
