@@ -5,9 +5,8 @@
  * WORKER_COUNT - number of workers to spin up
  */
 
+sh """env"""
 node {
-  git url: 'file:///Users/eugene/proj/landsat-demo', branch: 'emr'
-
   withCredentials(
     [[$class: 'UsernamePasswordMultiBinding',
       credentialsId: 'landsat-demo-aws',
