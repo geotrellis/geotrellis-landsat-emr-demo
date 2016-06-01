@@ -6,8 +6,9 @@
  */
 
 node {
-
+  stage "Pregame"
   sh 'echo $CRED'
+  sh 'env'
   withCredentials(
     [[$class: 'UsernamePasswordMultiBinding',
       credentialsId: 'default',
