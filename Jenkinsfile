@@ -6,11 +6,11 @@
  */
 
 node {
-  sh """env"""
+  echo env
 
   withCredentials(
     [[$class: 'UsernamePasswordMultiBinding',
-      credentialsId: 'Credentials',
+      credentialsId: env.Credentials,
       usernameVariable: 'AWS_ACCESS_KEY_ID',
       passwordVariable: 'AWS_SECRET_ACCESS_KEY'
     ]])
