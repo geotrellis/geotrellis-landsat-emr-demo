@@ -5,8 +5,9 @@
  * WORKER_COUNT - number of workers to spin up
  */
 
-sh """env"""
 node {
+  sh """env"""
+
   withCredentials(
     [[$class: 'UsernamePasswordMultiBinding',
       credentialsId: 'landsat-demo-aws',
