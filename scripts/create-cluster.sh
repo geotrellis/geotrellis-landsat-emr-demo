@@ -4,7 +4,6 @@
 SCRIPT_RUNNER=s3://elasticmapreduce/libs/script-runner/script-runner.jar
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-echo $WORKER_INSTANCE
 set -x
 aws emr create-cluster \
   --output text \

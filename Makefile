@@ -5,9 +5,9 @@ export EMR_TARGET := s3://geotrellis-test/emr
 export KEY_NAME := geotrellis-cluster
 
 export WORKER_COUNT := 1
-export WORKER_INSTANCE := m3.2xlarge
+export WORKER_INSTANCE:=m3.2xlarge
 export WORKER_PRICE := 0.15
-export MASTER_INSTANCE := m3.xlarge
+export MASTER_INSTANCE:=m3.xlarge
 export MASTER_PRICE := 0.15
 export BBOX='0,0,100,100'
 
@@ -29,8 +29,7 @@ create-cluster:
 	cd scripts && source create-cluster.sh | tee cluster-id.txt
 
 start-ingest:
-	cd scripts && source start-ingest.sh --cluster-id="$$(<cluster-id.txt)" | cut -f2 | tee last-step-id.txt
+	cd scripts && source start-ingest.sh --cluster-id=$$(<cluster-id.txt) | cut -f2 | tee last-step-id.txt
 
 clean:
 	./sbt clean
-	rm .upload-code
