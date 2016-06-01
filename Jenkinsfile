@@ -10,7 +10,6 @@ node {
 
   withCredentials(
     [[$class: 'UsernamePasswordMultiBinding',
-      credentialsId: 'landsat-demo-aws',
       usernameVariable: 'AWS_ACCESS_KEY_ID',
       passwordVariable: 'AWS_SECRET_ACCESS_KEY'
     ]])
