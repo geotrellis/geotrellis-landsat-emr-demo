@@ -31,5 +31,8 @@ create-cluster:
 start-ingest:
 	cd scripts && source start-ingest.sh --cluster-id=$$(<cluster-id.txt) | cut -f2 | tee last-step-id.txt
 
+wait-for-step:
+	cd scripts && source wait-for-step.sh --cluster-id=$$(<cluster-id.txt) --step-id=$$(<last-step-id.txt)
+
 clean:
 	./sbt clean
