@@ -6,12 +6,11 @@
  */
 
 node {
-  def credentialsId = env.Credentials
-  echo credentialsId
 
+  sh 'echo $CRED'
   withCredentials(
     [[$class: 'UsernamePasswordMultiBinding',
-      credentialsId: credentialsId,
+      credentialsId: 'default',
       usernameVariable: 'AWS_ACCESS_KEY_ID',
       passwordVariable: 'AWS_SECRET_ACCESS_KEY'
     ]])
