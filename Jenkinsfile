@@ -10,6 +10,7 @@ node {
 
   withCredentials(
     [[$class: 'UsernamePasswordMultiBinding',
+      credentialsId: 'Credentials',
       usernameVariable: 'AWS_ACCESS_KEY_ID',
       passwordVariable: 'AWS_SECRET_ACCESS_KEY'
     ]])
