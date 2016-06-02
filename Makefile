@@ -15,8 +15,8 @@ SERVER_JAR=server/target/scala-2.10/server-assembly-0.1.0.jar
 INGEST_JAR=ingest/target/scala-2.10/ingest-assembly-0.1.0.jar
 
 # Define functions to read cluster and step ids if they're not in the environment
-CID = $(shell echo $${CLUSTER_ID:-$$(< scripts/cluster-id.txt)})
-SID = $(shell echo $${STEP_ID:-$$(< scripts/last-step-id.txt)})
+CID = $(shell echo $${CLUSTER_ID:-$$(< cluster-id.txt)})
+SID = $(shell echo $${STEP_ID:-$$(< last-step-id.txt)})
 
 ${SERVER_JAR}: $(call rwildcard, server/src, *.scala) server/build.sbt
 	./sbt "project server" assembly
@@ -30,18 +30,18 @@ upload-code: ${SERVER_JAR} ${INGEST_JAR} scripts/emr/*
 	scripts/upload-code.sh
 
 create-cluster:
-	cd scripts && source create-cluster.sh | tee cluster-id.txt
+	 source scripts/create-cluster.sh | tee cluster-id.txt
 
 start-ingest:
-	cd scripts && source start-ingest.sh --cluster-id=${CID} | cut -f2 | tee last-step-id.txt
+	 source scripts/start-ingest.sh --cluster-id=${CID} | cut -f2 | tee last-step-id.txt
 
 wait-for-step:
-	cd scripts && source wait-for-step.sh --cluster-id=${CID} --step-id=${SID}
+	source scripts/wait-for-step.sh --cluster-id=${CID} --step-id=${SID}
 
 terminate-cluster:
 	aws emr terminate-clusters --cluster-ids ${CID}
-	rm -f scripts/cluster-id.txt
-	rm -f scripts/last-step-id.txt
+	rm -f cluster-id.txt
+	rm -f last-step-id.txt
 
 clean:
 	./sbt clean
