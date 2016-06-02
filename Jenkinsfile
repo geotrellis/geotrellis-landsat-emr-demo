@@ -35,7 +35,7 @@ node {
     sh "make -e wait-for-step"
 
     stage "Cleanup"
-    def userIn = input (id: 'Cluster Cleanup',
+    def terminate = input (id: 'Cluster Cleanup',
           message: 'Cluster Cleanup',
           ok: 'Okay',
           parameters: [
@@ -46,6 +46,6 @@ node {
             description: 'Finish jenkins job and terminate cluster'
           ]
         ])
-    if (userIn['TERMINATE_CLUSTER']) { sh "make -e terminate-cluster" }
+    if (terminate) { sh "make -e terminate-cluster" }
   }
 }
