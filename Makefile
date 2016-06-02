@@ -1,6 +1,6 @@
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
-export AWS_REGION := us-east-1
+export AWS_DEFAULT_REGION := us-east-1
 export EMR_TARGET := s3://geotrellis-test/emr
 export KEY_NAME := geotrellis-cluster
 
