@@ -3,6 +3,15 @@
  * EMR_TARGET - S3 URI that contains assembly and scripts
  * BBOX - xmin,ymin,xmax,ymax bounding box for query
  * WORKER_COUNT - number of workers to spin up
+ *
+ * Jenkins environment is a mess:
+ * The pipeline job parameters are given as groovy variables,
+ * which may either be used in string interpolation or
+ * assigned to env dictionary to be exposed as environment
+ * variables in the shell command.
+ *
+ * This is on contracts to a freeform job where they job parameters
+ * would come in as shell environment variables directly.
  */
 
 env.KEY_NAME = KEY_NAME
