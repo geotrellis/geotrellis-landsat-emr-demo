@@ -30,13 +30,13 @@ upload-code: ${SERVER_JAR} ${INGEST_JAR} scripts/emr/*
 	scripts/upload-code.sh
 
 create-cluster:
-	 source scripts/create-cluster.sh | tee cluster-id.txt
+	scripts/create-cluster.sh | tee cluster-id.txt
 
 start-ingest:
-	 source scripts/start-ingest.sh --cluster-id=${CID} | cut -f2 | tee last-step-id.txt
+	scripts/start-ingest.sh --cluster-id=${CID} | cut -f2 | tee last-step-id.txt
 
 wait-for-step:
-	source scripts/wait-for-step.sh --cluster-id=${CID} --step-id=${SID}
+	scripts/wait-for-step.sh --cluster-id=${CID} --step-id=${SID}
 
 terminate-cluster:
 	aws emr terminate-clusters --cluster-ids ${CID}
