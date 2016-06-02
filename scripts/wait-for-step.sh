@@ -1,4 +1,3 @@
-
 #!/bin/sh
 
 for i in "$@"
