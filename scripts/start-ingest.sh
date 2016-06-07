@@ -38,8 +38,7 @@ $EMR_TARGET/ingest-assembly-0.1.0.jar,\
 --startDate,2015-08-01,\
 --endDate,2016-01-01,\
 --output,accumulo,\
---params,\"instance=accumulo,table=tiles,user=root,password=secret\",\
---limit,6"
+--params,\"instance=accumulo,table=tiles,user=root,password=secret\""
 
 set -x
 aws emr add-steps --output text --cluster-id $CLUSTER_ID \
