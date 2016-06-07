@@ -11,6 +11,10 @@ export MASTER_INSTANCE:=m3.xlarge
 export MASTER_PRICE := 0.15
 export BBOX := -98.77,36.12,-91.93,41.48
 
+export EXECUTOR_MEMORY := 5G
+export EXECUTOR_CORES := 2
+export YARN_OVERHEAD := 260
+
 SERVER_JAR=server/target/scala-2.10/server-assembly-0.1.0.jar
 INGEST_JAR=ingest/target/scala-2.10/ingest-assembly-0.1.0.jar
 

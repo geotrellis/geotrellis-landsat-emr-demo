@@ -24,18 +24,14 @@ then
   exit
 fi
 
-EXECUTOR_MEMORY=10G
-EXECUTOR_CORES=4
-YARN_OVERHEAD=520
-
 ARGS="spark-submit,--master,yarn-cluster,\
 --class,demo.LandsatIngestMain,\
---driver-memory,$EXECUTOR_MEMORY,\
---executor-cores,$EXECUTOR_CORES,\
---executor-memory,$EXECUTOR_MEMORY,\
+--driver-memory,${EXECUTOR_MEMORY:-5G},\
+--executor-cores,${EXECUTOR_CORES:-2},\
+--executor-memory,${EXECUTOR_MEMORY:-5G},\
 --conf,spark.dynamicAllocation.enabled=true,\
---conf,spark.yarn.executor.memoryOverhead=$YARN_OVERHEAD,\
---conf,spark.yarn.driver.memoryOverhead=$YARN_OVERHEAD,\
+--conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD:-256},\
+--conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD:-256},\
 $EMR_TARGET/ingest-assembly-0.1.0.jar,\
 --layerName,landsat,\
 --bbox,\"$BBOX\",\
