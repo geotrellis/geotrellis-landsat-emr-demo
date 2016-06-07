@@ -30,8 +30,8 @@ node {
     ]])
   {
     stage "Launch"
-    sh "make -e create-cluster"
-    sh "make -e start-ingest"
+    sh "make -e create-cluster" || exit 1
+    sh "make -e start-ingest" || exit 1
 
     stage "Wait"
     sh "make -e wait-for-step"
