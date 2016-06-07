@@ -18,7 +18,7 @@ case $i in
 esac
 done
 
-if [[ -z $CLUSTER_ID || -z $BBOX || -z $START_DATE || -z $END_DATE]]
+if [[ -z $CLUSTER_ID || -z $BBOX || -z $START_DATE || -z $END_DATE ]]
 then
   echo "usage: start-ingest --cluster-id=<CLUSTER_ID> --BBOX=<xmin,ymin,xmax,ymax> --start-date=yyyy-mm-dd --end-date=yyyy-mm-dd"
   exit
