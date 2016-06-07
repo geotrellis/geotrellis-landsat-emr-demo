@@ -29,5 +29,6 @@ _SUCCESS
 *.swo
 *.sublime-*
 .vagrant
-
+.ensime
+.ensime_cache
 tags
