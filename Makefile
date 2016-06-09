@@ -32,17 +32,15 @@ ${INGEST_ASSEMBLY}: $(call rwildcard, ingest/src, *.scala) ingest/build.sbt
 	@touch -m ${INGEST_ASSEMBLY}
 
 upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/*
-	@aws s3 cp $(CURDIR)/scripts/emr/bootstrap-demo.sh ${S3_URI}/
-	@aws s3 cp $(CURDIR)/scripts/emr/bootstrap-geowave.sh ${S3_URI}/
-	@aws s3 cp $(CURDIR)/scripts/emr/geowave-install-lib.sh ${S3_URI}/
-# @aws s3 cp $(CURDIR)/scripts/emr/wait-for-accumulo.sh ${S3_URI}/
-# @aws s3 cp $(CURDIR)/scripts/emr/tile-server.sh ${S3_URI}/
+	@aws s3 cp $scripts/emr/bootstrap-demo.sh ${S3_URI}/
+	@aws s3 cp scripts/emr/bootstrap-geowave.sh ${S3_URI}/
+	@aws s3 cp scripts/emr/geowave-install-lib.sh ${S3_URI}/
 	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
 	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
 
 upload-site:
 	@cd viewer && npm run build
-	tar -czf viewer/site.tgz -C $(CURDIR)/viewer/dist .
+	tar -czf viewer/site.tgz -C viewer/dist .
 	@aws s3 cp viewer/site.tgz ${S3_URI}/
 
 create-cluster:
