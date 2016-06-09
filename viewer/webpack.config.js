@@ -1,5 +1,6 @@
 var path = require('path')
 var webpack = require('webpack')
+var HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
   devtool: 'inline-source-map',
@@ -9,13 +10,16 @@ module.exports = {
   ],
   output: {
     path: path.join(__dirname, 'dist'),
-    filename: 'bundle.js',
-    publicPath: '/'
+    filename: 'bundle.js'
   },
   plugins: [
     new webpack.optimize.OccurenceOrderPlugin(),
     new webpack.HotModuleReplacementPlugin(),
-    new webpack.NoErrorsPlugin()
+    new webpack.NoErrorsPlugin(),
+      new HtmlWebpackPlugin({
+          title: 'GeoTrellis Landsat Demo',
+          favicon: './client/favicon.ico'
+      })
   ],
   module: {
     loaders: [{

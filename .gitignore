@@ -1,10 +1,12 @@
 
-scripts/cluster-id.txt
-scripts/last-step-id.txt
 project/boot
 project/plugins/project
 project/plugins/target
 project/target
+viewer/dist
+viewer/site.tgz
+cluster-id.txt
+last-step-id.txt
 target
 .ensime
 \#*#
