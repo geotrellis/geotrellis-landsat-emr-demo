@@ -25,23 +25,21 @@ The `Makefile` has a section of variables it defines as a default at the top. It
 
 ```make
 export AWS_DEFAULT_REGION := us-east-1
-export EMR_TARGET := s3://geotrellis-test/emr
-export KEY_NAME := geotrellis-cluster
-
+export S3_URI := s3://geotrellis-test/emr
+export EC2_KEY := geotrellis-cluster
 export WORKER_COUNT := 1
-export WORKER_INSTANCE:=m3.2xlarge
+export WORKER_INSTANCE := m3.2xlarge
 export WORKER_PRICE := 0.15
-export MASTER_INSTANCE:=m3.xlarge
+export MASTER_INSTANCE := m3.xlarge
 export MASTER_PRICE := 0.15
 export BBOX := -98.77,36.12,-91.93,41.48
 ```
 
 Because they are `export`ed they will be available to shell scripts called from the make targets. You may either change the file to adjust it for your input or you may use `-e` option to make, which would use any variables from your environmet to overwrite the ones defined in the `Makefile`, turning them into defaults.
 
-
 ### Upload Code
 
-In order to run the project on EMR the assembly files and some ancillary scripts need to be uploaded to S3 buket named in `$EMR_TARGET` such they are accessable from EMR cluster. This can be done directly using:
+In order to run the project on EMR the assembly files and some ancillary scripts need to be uploaded to S3 buket named in `$S3_URI` such they are accessable from EMR cluster. This can be done directly using:
 
 ```console
 make upload-code
@@ -49,12 +47,12 @@ make upload-code
 This is going to upload the following files for the following reasons:
  - `bootstrap-geowave.sh`: Bootstrap script that installs Accumulo and GeoWave on EMR
  - `geowave-install-lib.sh`: Dependency of the above bootstrap script
+ - `bootstrap-demo.sh`: Script that will start GeoTrellis tile server in the background
  - `wait-for-accumulo.sh`: Script that will wait for Accumulo initialization to complete
- - `tile-server.sh`: Script that will start GeoTrellis tile server in the background
  - `ingest-assembly-0.1.0.jar`: Fat jar containing ingest program classes and their dependencies
  - `server-assembly-0.1.0.jar`: Fat jar containing tile server classes and their dependencies
 
-As a side benefit this will re-build the assemblies if they are out of date or unavailble.
+As a side benefit this will re-build the assemblies if they are out of date or unavailable.
 
 ### Create Cluster
 
@@ -83,11 +81,12 @@ Nothing to report yet!
 ### Ingest Step
 
 For the ingest step we're going to require a bounding box to intersect with available scenes.
-Either define or overwrite the `BBOX` variable in the `Makefile`.
 
 ```sh
-make start-ingest
+make START_DATE=2015-06-01 END_DATE=2015-06-15 start-ingest
 ```
+
+Similarly either define, pass, or overwrite the `BBOX` variable in the `Makefile`.
 
 This script will kick off a spark process that will contact Development Seed Landsat8 Metadata API service to get a listing of Landsat scenes matching the query parameters. Not all scenes are present on S3 `landsat-pdt` bucket so they first the listing must be filtered only to scenes that exist.
 
