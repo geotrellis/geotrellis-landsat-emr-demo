@@ -24,11 +24,11 @@ SID = $(shell echo $${STEP_ID:-$$(< last-step-id.txt)})
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
 ${SERVER_ASSEMBLY}: $(call rwildcard, server/src, *.scala) server/build.sbt
-	./sbt "project server" assembly
+	./sbt "project server" assembly -no-colors
 	@touch -m ${SERVER_ASSEMBLY}
 
 ${INGEST_ASSEMBLY}: $(call rwildcard, ingest/src, *.scala) ingest/build.sbt
-	./sbt "project ingest" assembly
+	./sbt  "project ingest" assembly -no-colors
 	@touch -m ${INGEST_ASSEMBLY}
 
 upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/*
@@ -93,4 +93,4 @@ terminate-cluster:
 	rm -f last-step-id.txt
 
 clean:
-	./sbt clean
+	./sbt clean -no-colors

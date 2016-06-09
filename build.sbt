@@ -18,7 +18,9 @@ lazy val commonSettings = Seq(
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
 
-  resolvers += Resolver.bintrayRepo("azavea", "geotrellis"),
+  resolvers ++= Seq(
+    Resolver.bintrayRepo("azavea", "geotrellis"),
+    Resolver.bintrayRepo("azavea", "maven")),
 
   shellPrompt := { s => Project.extract(s).currentProject.id + " > " }
 ) ++ net.virtualvoid.sbt.graph.Plugin.graphSettings
