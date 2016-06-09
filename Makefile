@@ -48,7 +48,7 @@ create-cluster:
 --release-label emr-4.5.0 \
 --output text \
 --use-default-roles \
---configurations file://$(CURDIR)/scripts/configurations.json \
+--configurations "file://$(CURDIR)/scripts/configurations.json" \
 --log-uri ${S3_URI}/logs \
 --ec2-attributes KeyName=${EC2_KEY} \
 --applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox \
@@ -57,10 +57,10 @@ Name=Master,InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTA
 Name=Workers,InstanceCount=${WORKER_COUNT},BidPrice=${WORKER_PRICE},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE} \
 --bootstrap-actions \
 Name=BootstrapGeoWave,Path=${S3_URI}/bootstrap-geowave.sh \
+Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
+Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--tsm=demo.Main,--site=${S3_URI}/site.tgz] \
 | tee cluster-id.txt
 
-# Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
-# Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--tsm=demo.Main,--site=${S3_URI}/site.tgz]
 start-ingest:
 	@if [ -z $$START_DATE ]; then echo "START_DATE is not set" && exit 1; fi
 	@if [ -z $$END_DATE ]; then echo "END_DATE is not set" && exit 1; fi
