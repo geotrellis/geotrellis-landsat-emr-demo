@@ -117,3 +117,35 @@ npm start
 
 Open `http://localhost:3000` in Chrome with Foxy Proxy enabled and you will be able to use the proxy to access the tile service.
 Enter `http://ec2-??-??-??-??.compute-1.amazonaws.com:8899` into the `Catalog` field and hit `Load`
+
+## Jenkins
+
+To build and deploy the demo from Jenkins we can use the same `Makefile`.
+We can need to define Jenkins job parameters to match the environment variables used in the `Makefile` and then build targets it with the `-e` parameter to allow the environment variables to overwrite the file defaults.
+
+Since our scripts rely on AWS CLI we must use the Jenkins credentials plugin to define `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` for the build environment.
+
+### Building
+
+```console
+# Requires: S3_URI
+
+# Download viewer dependencies
+sh -xc "cd viewer && npm install"
+make -e upload-site || exit 1
+
+# Build and upload assemblies with scripts
+make -e upload-code || exit 1
+```
+
+### Deploying
+
+```console
+# Requires: S3_URI, EC2_KEY, START_DATE, END_DATE, BBOX, WORKER_COUNT
+
+make -e create-cluster || exit 1
+(make -e start-ingest && make -e wait-for-step) ||
+    (make -e terminate-cluster && exit 1)
+```
+
+Included `Jenkinsfile` shows how we can use Jenkins DSL to build a job that deploys a an EMR cluster, monitors the ingest step and waits for user input to optionally terminate the cluster when the ingest step is done.
