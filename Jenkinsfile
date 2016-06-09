@@ -1,11 +1,4 @@
-/* Required Parameters:
- * KEY_NAME - EMR SSH key
- * EMR_TARGET - S3 URI that contains assembly and scripts
- * BBOX - xmin,ymin,xmax,ymax bounding box for query
- * WORKER_COUNT - number of workers to spin up
- *
- * Jenkins environment is a mess:
- * The pipeline job parameters are given as groovy variables,
+/* The pipeline job parameters are given as groovy variables,
  * which may either be used in string interpolation or
  * assigned to env dictionary to be exposed as environment
  * variables in the shell command.
@@ -13,9 +6,8 @@
  * This is on contracts to a freeform job where they job parameters
  * would come in as shell environment variables directly.
  */
-
-env.KEY_NAME = KEY_NAME
-env.EMR_TARGET = EMR_TARGET
+env.EC2_KEY = EC2_KEY
+env.S3_URI = S3_URI
 env.BBOX = BBOX
 env.START_DATE = START_DATE
 env.END_DATE = END_DATE
@@ -30,11 +22,11 @@ node {
     ]])
   {
     stage "Launch"
-    sh "make -e create-cluster" || exit 1
-    sh "make -e start-ingest" || exit 1
+    sh "make -e create-cluster || exit 1"
+    sh "make -e start-ingest || (make -e terminate-cluster && exit 1)"
 
     stage "Wait"
-    sh "make -e wait-for-step"
+    sh "make -e wait-for-step || (make -e terminate-cluster && exit 1)"
 
     stage "Cleanup"
     def terminate = input (id: 'Cluster Cleanup',
