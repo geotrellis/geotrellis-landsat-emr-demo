@@ -75,7 +75,9 @@ object LandsatIngest extends Logging {
           img <- iter
           ProjectedRaster(raster, crs) = source(img)
           reprojected = raster.reproject(crs, WebMercator) // reprojection before chunking avoids NoData artifacts
-          chunk <- reprojected.split(TileLayout(31, 31, 256, 256), Split.Options(cropped = false, extend = false))
+          layoutCols = math.ceil(reprojected.cols.toDouble / 256).toInt
+          layoutRows = math.ceil(reprojected.rows.toDouble / 256).toInt
+          chunk <- reprojected.split(TileLayout(layoutCols, layoutRows, 256, 256), Split.Options(cropped = false, extend = false))
         } yield {
           TemporalProjectedExtent(chunk.extent, WebMercator, img.aquisitionDate) -> chunk.tile
         }
