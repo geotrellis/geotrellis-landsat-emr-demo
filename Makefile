@@ -32,7 +32,7 @@ ${INGEST_ASSEMBLY}: $(call rwildcard, ingest/src, *.scala) ingest/build.sbt
 	@touch -m ${INGEST_ASSEMBLY}
 
 upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/*
-	@aws s3 cp $scripts/emr/bootstrap-demo.sh ${S3_URI}/
+	@aws s3 cp scripts/emr/bootstrap-demo.sh ${S3_URI}/
 	@aws s3 cp scripts/emr/bootstrap-geowave.sh ${S3_URI}/
 	@aws s3 cp scripts/emr/geowave-install-lib.sh ${S3_URI}/
 	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
