@@ -4,7 +4,7 @@ import { Provider } from 'react-redux';
 import App from '../containers/App';
 
 var initialState = {
-  rootUrl: "http://localhost:8088",
+    rootUrl: "http://" + window.location.hostname + ":8899",
 
   map: {
     url: [],
