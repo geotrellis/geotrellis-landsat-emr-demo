@@ -94,7 +94,7 @@ The bands of interest are hard-coded to R,G,B,IR,QA and will be combined for eac
 
 You can view the progress of this process by browsing to `Resource Manager` > `Application Manager` from the AWS console cluster detail page.
 
-This step will take some time to complete, especially if you factor in the time it takes to allocate and bootstrap a spot-priced cluster. So there is a `wait-for-step` target that will poll the EMR API very 60s and terminate when the step has finished.
+This step will take some time to complete, especially if you factor in the time it takes to allocate and bootstrap a spot-priced cluster. So there is a `wait` target that will poll the EMR API very 60s and terminate when the step has finished.
 
 ### Terminate Cluster
 
@@ -144,7 +144,7 @@ make -e upload-code || exit 1
 # Requires: S3_URI, EC2_KEY, START_DATE, END_DATE, BBOX, WORKER_COUNT
 
 make -e create-cluster || exit 1
-(make -e start-ingest && make -e wait-for-step) ||
+(make -e start-ingest && make -e wait) ||
     (make -e terminate-cluster && exit 1)
 ```
 

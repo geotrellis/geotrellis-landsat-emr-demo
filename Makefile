@@ -84,8 +84,18 @@ ${S3_URI}/ingest-assembly-0.1.0.jar,\
 --params,\"instance=accumulo,table=tiles,user=root,password=secret\"\
 ] | cut -f2 | tee last-step-id.txt
 
-wait-for-step:
-	scripts/wait-for-step.sh --cluster-id=${CID} --step-id=${SID}
+wait: INTERVAL=60
+wait:
+	@while (true); do \
+	OUT=$$(aws emr describe-step --cluster-id ${CID} --step-id ${SID}); \
+	[[ $$OUT =~ (\"State\": \"([A-Z]+)\") ]]; \
+	echo $${BASH_REMATCH[2]}; \
+	case $${BASH_REMATCH[2]} in \
+			PENDING | RUNNING) sleep ${INTERVAL};; \
+			COMPLETED) exit 0;; \
+			*) exit 1;; \
+	esac; \
+	done
 
 terminate-cluster:
 	aws emr terminate-clusters --cluster-ids ${CID}
@@ -94,3 +104,6 @@ terminate-cluster:
 
 clean:
 	./sbt clean -no-colors
+
+proxy:
+	aws emr socks --cluster-id=${CID} --key-pair-file=~/${EC2_KEY}.pem
