@@ -51,7 +51,8 @@ fi
 aws s3 cp $SITE_TGZ /tmp/site.tgz
 mkdir -m 755 -p /tmp/site
 tar -xzf /tmp/site.tgz -C /tmp/site
-chmod 755 /tmp/site/*
+chmod 644 /tmp/site/*
+chmod 755 /tmp/site
 
 sudo yum -y install docker
 sudo usermod -aG docker hadoop
