@@ -106,4 +106,7 @@ clean:
 	./sbt clean -no-colors
 
 proxy:
-	aws emr socks --cluster-id=${CID} --key-pair-file=~/${EC2_KEY}.pem
+	aws emr socks --cluster-id ${CID} --key-pair-file "${HOME}/${EC2_KEY}.pem"
+
+ssh:
+	aws emr ssh --cluster-id ${CID} --key-pair-file "${HOME}/${EC2_KEY}.pem"
