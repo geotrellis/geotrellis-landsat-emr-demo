@@ -50,14 +50,9 @@ fi
 # Start Static Web Server
 aws s3 cp $SITE_TGZ /tmp/site.tgz
 mkdir -m 755 -p /tmp/site
-tar -xzf /tmp/site.tgz -C /tmp/site
-chmod 644 /tmp/site/*
-chmod 755 /tmp/site
-
-sudo yum -y install docker
-sudo usermod -aG docker hadoop
-sudo service docker start
-sudo docker run --name demo-site -p 8080:80 -v /tmp/site:/usr/share/nginx/html:ro -d nginx
+sudo tar -xzf /tmp/site.tgz -C /var/www/html
+sudo chmod 644 /var/www/html/*
+sudo chmod 755 /var/www/html
 
 # Download Tile Server
 aws s3 cp $TILE_SERVER_JAR /tmp/tile-server.jar
