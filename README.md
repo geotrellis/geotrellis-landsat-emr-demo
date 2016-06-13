@@ -118,14 +118,31 @@ npm start
 Open `http://localhost:3000` in Chrome with Foxy Proxy enabled and you will be able to use the proxy to access the tile service.
 Enter `http://ec2-??-??-??-??.compute-1.amazonaws.com:8899` into the `Catalog` field and hit `Load`
 
-## Jenkins
+## Deployment
+
+It is important to emphasize that GeoTrellis is a library and as such does not hold any opinions on deployment by itself. It is rather the nature of the application using GeoTrellis that dictates what is an appropriate deployment strategy. For instance we can imagine two different ways in which this demo application could be deployed:
+
+*Workspace Cluster*
+In this manner a user would bring up an EMR cluster that would serve as their workspace. Likely he would trigger one or more ingests that would bring relevant information into the instance of Accumulo running on EMR and utilize the quick query/response afforded by Accumulo to perform his analysis. Once the analysis is complete the user chooses when to terminate the cluster.
+
+In this manner we reap the benefits of scalability and isolation. From scalability perspective the size of the cluster and its existence is closely tied to the work required by a single user, once the analysis is done there is no further expense. From isolation standpoint the cluster encapsulates nearly all of the environment required to support the application. If there is a fault, other users are unaffected, multiple users would be able to run different versions of the application without conflict, there is no resource contention between multiple instance of the cluster etc.
+
+Importantly the user interaction involves triggering spark ingest jobs which may consume cluster resources for long periods of time. However this process is intuitive to the user since they represent the work they requested.
+
+*Ingest/Serve Cluster*
+A second way such application could be deployed is as a long-lived cluster that serves some view of the data. In this case the ingest step would be run once during the cluster setup stage and then optionally periodically to refresh the data. Then user interaction could happen at any point later in form of tile service requests that are satisfied through key/value lookups in Accumulo.
+
+It is important to note that in this scenario the Spark ingest is not triggered by the user interactions and in fact a spark context is not required to satisfy user requests. After the initial job we are in fact treating ERM cluster as an Accumulo backed tile service to satisfy user requests. Because Spark context is not required to satisfy user requests the requests are quite lite and we can feel safer about sharing this resource amongst many users.
+
+
+### Jenkins
 
 To build and deploy the demo from Jenkins we can use the same `Makefile`.
 We can need to define Jenkins job parameters to match the environment variables used in the `Makefile` and then build targets it with the `-e` parameter to allow the environment variables to overwrite the file defaults.
 
 Since our scripts rely on AWS CLI we must use the Jenkins credentials plugin to define `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` for the build environment.
 
-### Building
+#### Building
 
 ```console
 # Requires: S3_URI
@@ -138,14 +155,16 @@ make -e upload-site || exit 1
 make -e upload-code || exit 1
 ```
 
-### Deploying
+#### Deploying
 
 ```console
 # Requires: S3_URI, EC2_KEY, START_DATE, END_DATE, BBOX, WORKER_COUNT
 
 make -e create-cluster || exit 1
-(make -e start-ingest && make -e wait) ||
-    (make -e terminate-cluster && exit 1)
+make -e start-ingest || (make -e terminate-cluster && exit 1)
+make -e wait || (make -e terminate-cluster && exit 1)
 ```
 
 Included `Jenkinsfile` shows how we can use Jenkins DSL to build a job that deploys a an EMR cluster, monitors the ingest step and waits for user input to optionally terminate the cluster when the ingest step is done.
+
+Also note that after the cluster has been successfully initialized we need to check for success of subsequent steps and tare down the cluster on failure to avoid producing an orphan cluster from a failed job.
