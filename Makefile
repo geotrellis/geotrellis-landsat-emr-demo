@@ -2,6 +2,7 @@ export AWS_DEFAULT_REGION := us-east-1
 export S3_URI := s3://geotrellis-test/emr
 export EC2_KEY := geotrellis-cluster
 
+export NAME := Landsat Ingest
 export WORKER_COUNT := 1
 export WORKER_INSTANCE:=m3.2xlarge
 export WORKER_PRICE := 0.15
@@ -44,7 +45,7 @@ upload-site:
 	@aws s3 cp viewer/site.tgz ${S3_URI}/
 
 create-cluster:
-	aws emr create-cluster --name "Landsat Ingest" \
+	aws emr create-cluster --name "${NAME}" \
 --release-label emr-4.5.0 \
 --output text \
 --use-default-roles \
