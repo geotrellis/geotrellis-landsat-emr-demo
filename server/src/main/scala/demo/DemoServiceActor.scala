@@ -57,7 +57,50 @@ class DemoServiceActor(
     path("catalog") { catalogRoute }  ~
     pathPrefix("tiles") { tilesRoute } ~
     pathPrefix("diff") { diffRoute } ~
-    pathPrefix("mean") { polygonalMeanRoute }
+    pathPrefix("mean") { polygonalMeanRoute } ~
+    pathPrefix("series") { timeseriesRoute }
+
+  def timeseriesRoute = {
+    import spray.json.DefaultJsonProtocol._
+
+    pathPrefix(Segment / IntNumber / Segment) { (layer, zoom, op) =>
+      parameters('lat, 'lng) { (lat, lng) =>
+        complete {
+          val catalog = readerSet.layerReader
+          val layerId = LayerId(layer, zoom)
+
+          val geometry = Point(lng.toDouble, lat.toDouble).reproject(LatLng, WebMercator)
+          val extent = geometry.envelope
+
+          val fn = op match {
+            case "ndvi" => NDVI.apply(_)
+            case "ndwi" => NDWI.apply(_)
+            case _ => sys.error(s"UNKNOWN OPERATION")
+          }
+
+          val rdd = catalog.query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
+            .where(Intersects(extent))
+            .result
+          val mt = rdd.metadata.mapTransform
+
+          val answer = rdd.map({ case (k, v) =>
+            val re = RasterExtent(mt(k), v.cols, v.rows)
+            var retval: Double = 0.0
+
+            Rasterizer.foreachCellByGeometry(geometry, re)({ (col,row) =>
+              val tile = fn(v)
+              retval = tile.getDouble(col, row)
+            })
+            (k.time, retval)
+          })
+            .collect
+            .toJson
+
+          JsObject("answer" -> answer)
+        }
+      }
+    }
+  }
 
   def polygonalMeanRoute = {
     import spray.json.DefaultJsonProtocol._
@@ -70,7 +113,12 @@ class DemoServiceActor(
               val catalog = readerSet.layerReader
               val layerId = LayerId(layer, zoom)
 
-              val geometry = json.parseJson.convertTo[Geometry] match {
+              val rawGeometry = try {
+                json.parseJson.convertTo[Geometry]
+              } catch {
+                case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
+              }
+              val geometry = rawGeometry match {
                 case p: Polygon => MultiPolygon(p.reproject(LatLng, WebMercator))
                 case mp: MultiPolygon => mp.reproject(LatLng, WebMercator)
                 case _ => sys.error(s"BAD GEOMETRY")
