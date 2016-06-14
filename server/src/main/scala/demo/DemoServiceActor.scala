@@ -1,18 +1,19 @@
 package demo
 
+import geotrellis.proj4._
 import geotrellis.raster._
+import geotrellis.raster.histogram._
 import geotrellis.raster.io.geotiff._
+import geotrellis.raster.rasterize._
 import geotrellis.raster.render._
 import geotrellis.raster.resample._
-import geotrellis.raster.rasterize._
-import geotrellis.raster.histogram._
 import geotrellis.spark._
 import geotrellis.spark.io._
+import geotrellis.raster.summary.polygonal._
 import geotrellis.spark.tiling._
 import geotrellis.vector._
 import geotrellis.vector.io._
 import geotrellis.vector.reproject._
-import geotrellis.proj4._
 
 import org.apache.spark._
 
@@ -55,7 +56,47 @@ class DemoServiceActor(
     path("ping") { complete { "pong\n" } } ~
     path("catalog") { catalogRoute }  ~
     pathPrefix("tiles") { tilesRoute } ~
-    pathPrefix("diff") { diffRoute }
+    pathPrefix("diff") { diffRoute } ~
+    pathPrefix("mean") { polygonalMeanRoute }
+
+  def polygonalMeanRoute = {
+    import spray.json.DefaultJsonProtocol._
+
+    pathPrefix(Segment / IntNumber / Segment) { (layer, zoom, op) =>
+      cors {
+        post {
+          entity(as[String]) { json =>
+            complete {
+              val catalog = readerSet.layerReader
+              val layerId = LayerId(layer, zoom)
+
+              val geometry = json.parseJson.convertTo[Geometry] match {
+                case p: Polygon => MultiPolygon(p.reproject(LatLng, WebMercator))
+                case mp: MultiPolygon => mp.reproject(LatLng, WebMercator)
+                case _ => sys.error(s"BAD GEOMETRY")
+              }
+              val extent = geometry.envelope
+
+              val fn = op match {
+                case "ndvi" => NDVI.apply(_)
+                case "ndwi" => NDWI.apply(_)
+                case _ => sys.error(s"UNKNOWN OPERATION")
+              }
+
+              val rdd = catalog.query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
+                .where(Intersects(extent))
+                .result
+              val md = rdd.metadata
+
+              val answer = ContextRDD(rdd.mapValues({ v => fn(v) }), md).polygonalMean(geometry)
+
+              JsObject("answer" -> JsNumber(answer))
+            }
+          }
+        }
+      }
+    }
+  }
 
   /** Return a JSON representation of the catalog */
   def catalogRoute =
