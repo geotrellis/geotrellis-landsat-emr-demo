@@ -59,7 +59,7 @@ Name=Workers,InstanceCount=${WORKER_COUNT},BidPrice=${WORKER_PRICE},InstanceGrou
 --bootstrap-actions \
 Name=BootstrapGeoWave,Path=${S3_URI}/bootstrap-geowave.sh \
 Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
-Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--tsm=demo.Main,--site=${S3_URI}/site.tgz] \
+Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz] \
 | tee cluster-id.txt
 
 start-ingest:
