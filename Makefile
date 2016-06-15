@@ -1,7 +1,7 @@
 export AWS_DEFAULT_REGION := us-east-1
 export S3_URI := s3://geotrellis-test/emr
 export EC2_KEY := geotrellis-cluster
-
+export SUBNET_ID := subnet-c5fefdb1
 export NAME := Landsat Ingest
 export MASTER_INSTANCE:=m3.xlarge
 export MASTER_PRICE := 0.5
@@ -61,7 +61,7 @@ create-cluster:
 --use-default-roles \
 --configurations "file://$(CURDIR)/scripts/configurations.json" \
 --log-uri ${S3_URI}/logs \
---ec2-attributes KeyName=${EC2_KEY} \
+--ec2-attributes KeyName=${EC2_KEY},SubnetId=${SUBNET_ID} \
 --applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox \
 --instance-groups \
 Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTANCE} \
@@ -72,7 +72,7 @@ Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
 Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz] \
 | tee cluster-id.txt
 
-start-ingest: LAYER_NAME=landsat
+start-ingest: LAYER_NAME:=landsat
 start-ingest:
 	@if [ -z $$START_DATE ]; then echo "START_DATE is not set" && exit 1; fi
 	@if [ -z $$END_DATE ]; then echo "END_DATE is not set" && exit 1; fi
