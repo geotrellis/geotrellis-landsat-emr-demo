@@ -83,7 +83,7 @@ object LandsatIngest extends Logging {
           TemporalProjectedExtent(chunk.extent, WebMercator, img.aquisitionDate) -> chunk.tile
         }
       }, preservesPartitioning = true)
-      .repartition(images.length * 8) // Break up each scene into 8 partitions
+      .repartition(images.length * 16) // Break up each scene into 16 partitions
   }
 
   /** Accept a list of landsat image descriptors we will ingest into a geotrellis layer.
