@@ -1,18 +1,19 @@
 package demo
 
+import geotrellis.proj4._
 import geotrellis.raster._
+import geotrellis.raster.histogram._
 import geotrellis.raster.io.geotiff._
+import geotrellis.raster.rasterize._
 import geotrellis.raster.render._
 import geotrellis.raster.resample._
-import geotrellis.raster.rasterize._
-import geotrellis.raster.histogram._
 import geotrellis.spark._
 import geotrellis.spark.io._
+import geotrellis.raster.summary.polygonal._
 import geotrellis.spark.tiling._
 import geotrellis.vector._
 import geotrellis.vector.io._
 import geotrellis.vector.reproject._
-import geotrellis.proj4._
 
 import org.apache.spark._
 
@@ -55,7 +56,125 @@ class DemoServiceActor(
     path("ping") { complete { "pong\n" } } ~
     path("catalog") { catalogRoute }  ~
     pathPrefix("tiles") { tilesRoute } ~
-    pathPrefix("diff") { diffRoute }
+    pathPrefix("diff") { diffRoute } ~
+    pathPrefix("mean") { polygonalMeanRoute } ~
+    pathPrefix("series") { timeseriesRoute }
+
+  def timeseriesRoute = {
+    import spray.json.DefaultJsonProtocol._
+
+    pathPrefix(Segment / IntNumber / Segment) { (layer, zoom, op) =>
+      parameters('lat, 'lng) { (lat, lng) =>
+        complete {
+          val catalog = readerSet.layerReader
+          val layerId = LayerId(layer, zoom)
+
+          val geometry = Point(lng.toDouble, lat.toDouble).reproject(LatLng, WebMercator)
+          val extent = geometry.envelope
+
+          // Wasteful but safe
+          val fn = op match {
+            case "ndvi" => NDVI.apply(_)
+            case "ndwi" => NDWI.apply(_)
+            case _ => sys.error(s"UNKNOWN OPERATION")
+          }
+
+          val rdd = catalog.query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
+            .where(Intersects(extent))
+            .result
+          val mt = rdd.metadata.mapTransform
+
+          val answer = rdd.map({ case (k, v) =>
+            val re = RasterExtent(mt(k), v.cols, v.rows)
+            var retval: Double = 0.0
+
+            Rasterizer.foreachCellByGeometry(geometry, re)({ (col,row) =>
+              val tile = fn(v)
+              retval = tile.getDouble(col, row)
+            })
+            (k.time, retval)
+          })
+            .collect
+            .toJson
+
+          JsObject("answer" -> answer)
+        }
+      }
+    }
+  }
+
+  def polygonalMeanRoute = {
+    import spray.json.DefaultJsonProtocol._
+
+    pathPrefix(Segment / IntNumber / Segment) { (layer, zoom, op) =>
+      parameters('time, 'otherTime ?) { (time, otherTime) =>
+        cors {
+          post {
+            entity(as[String]) { json =>
+              complete {
+                val catalog = readerSet.layerReader
+                val layerId = LayerId(layer, zoom)
+
+                val rawGeometry = try {
+                  json.parseJson.convertTo[Geometry]
+                } catch {
+                  case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
+                }
+                val geometry = rawGeometry match {
+                  case p: Polygon => MultiPolygon(p.reproject(LatLng, WebMercator))
+                  case mp: MultiPolygon => mp.reproject(LatLng, WebMercator)
+                  case _ => sys.error(s"BAD GEOMETRY")
+                }
+                val extent = geometry.envelope
+
+                val fn = op match {
+                  case "ndvi" => NDVI.apply(_)
+                  case "ndwi" => NDWI.apply(_)
+                  case _ => sys.error(s"UNKNOWN OPERATION")
+                }
+
+                val rdd = catalog
+                  .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
+                  .where(At(DateTime.parse(time, dateTimeFormat)))
+                  .where(Intersects(extent))
+                  .result
+                val md = rdd.metadata
+
+                val answer: Double = otherTime match {
+                  case None =>
+                    // The metadata are not correct here, but that is
+                    // okay in this instance because the polygonalMean
+                    // method does not need them to be.
+                    ContextRDD(rdd.mapValues({ v => fn(v) }), md).polygonalMean(geometry)
+                  case Some(otherTime) =>
+                    val rdd2 = catalog
+                      .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
+                      .where(At(DateTime.parse(otherTime, dateTimeFormat)))
+                      .where(Intersects(extent))
+                      .result
+                      .map({ case (k,v) => (k.spatialKey, fn(v)) })
+                    val rdd3 = rdd.map({ case (k,v) => (k.spatialKey, fn(v)) })
+                      .join(rdd2).map({ case (k, (v1, v2)) =>
+                        (k, v1.combineDouble(v2)({ (a, b) => a - b }))
+                      })
+
+                    val cellType = rdd3.first._2.cellType
+                    val stBounds = md.bounds.asInstanceOf[KeyBounds[SpaceTimeKey]]
+                    val bounds = KeyBounds(stBounds.minKey.spatialKey, stBounds.maxKey.spatialKey)
+                    val metadata = TileLayerMetadata(cellType, md.layout, md.extent, md.crs, bounds)
+
+                    // Ditto note about the metadata
+                    ContextRDD(rdd3, metadata).polygonalMean(geometry)
+                }
+
+                JsObject("answer" -> JsNumber(answer))
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
   /** Return a JSON representation of the catalog */
   def catalogRoute =
