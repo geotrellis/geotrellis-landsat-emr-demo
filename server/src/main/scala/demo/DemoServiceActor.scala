@@ -72,6 +72,7 @@ class DemoServiceActor(
           val geometry = Point(lng.toDouble, lat.toDouble).reproject(LatLng, WebMercator)
           val extent = geometry.envelope
 
+          // Wasteful but safe
           val fn = op match {
             case "ndvi" => NDVI.apply(_)
             case "ndwi" => NDWI.apply(_)
@@ -106,39 +107,68 @@ class DemoServiceActor(
     import spray.json.DefaultJsonProtocol._
 
     pathPrefix(Segment / IntNumber / Segment) { (layer, zoom, op) =>
-      cors {
-        post {
-          entity(as[String]) { json =>
-            complete {
-              val catalog = readerSet.layerReader
-              val layerId = LayerId(layer, zoom)
+      parameters('time, 'otherTime ?) { (time, otherTime) =>
+        cors {
+          post {
+            entity(as[String]) { json =>
+              complete {
+                val catalog = readerSet.layerReader
+                val layerId = LayerId(layer, zoom)
 
-              val rawGeometry = try {
-                json.parseJson.convertTo[Geometry]
-              } catch {
-                case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
+                val rawGeometry = try {
+                  json.parseJson.convertTo[Geometry]
+                } catch {
+                  case e: Exception => sys.error("THAT PROBABLY WASN'T GEOMETRY")
+                }
+                val geometry = rawGeometry match {
+                  case p: Polygon => MultiPolygon(p.reproject(LatLng, WebMercator))
+                  case mp: MultiPolygon => mp.reproject(LatLng, WebMercator)
+                  case _ => sys.error(s"BAD GEOMETRY")
+                }
+                val extent = geometry.envelope
+
+                val fn = op match {
+                  case "ndvi" => NDVI.apply(_)
+                  case "ndwi" => NDWI.apply(_)
+                  case _ => sys.error(s"UNKNOWN OPERATION")
+                }
+
+                val rdd = catalog
+                  .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
+                  .where(At(DateTime.parse(time, dateTimeFormat)))
+                  .where(Intersects(extent))
+                  .result
+                val md = rdd.metadata
+
+                val answer: Double = otherTime match {
+                  case None =>
+                    // The metadata are not correct here, but that is
+                    // okay in this instance because the polygonalMean
+                    // method does not need them to be.
+                    ContextRDD(rdd.mapValues({ v => fn(v) }), md).polygonalMean(geometry)
+                  case Some(otherTime) =>
+                    val rdd2 = catalog
+                      .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
+                      .where(At(DateTime.parse(otherTime, dateTimeFormat)))
+                      .where(Intersects(extent))
+                      .result
+                      .map({ case (k,v) => (k.spatialKey, fn(v)) })
+                    val rdd3 = rdd.map({ case (k,v) => (k.spatialKey, fn(v)) })
+                      .join(rdd2).map({ case (k, (v1, v2)) =>
+                        (k, v1.combineDouble(v2)({ (a, b) => a - b }))
+                      })
+
+                    val cellType = rdd3.first._2.cellType
+                    val stBounds = md.bounds.asInstanceOf[KeyBounds[SpaceTimeKey]]
+                    val bounds = KeyBounds(stBounds.minKey.spatialKey, stBounds.maxKey.spatialKey)
+                    val metadata = TileLayerMetadata(cellType, md.layout, md.extent, md.crs, bounds)
+
+                    // Ditto note about the metadata
+                    ContextRDD(rdd3, metadata).polygonalMean(geometry)
+                }
+
+                JsObject("answer" -> JsNumber(answer))
               }
-              val geometry = rawGeometry match {
-                case p: Polygon => MultiPolygon(p.reproject(LatLng, WebMercator))
-                case mp: MultiPolygon => mp.reproject(LatLng, WebMercator)
-                case _ => sys.error(s"BAD GEOMETRY")
-              }
-              val extent = geometry.envelope
-
-              val fn = op match {
-                case "ndvi" => NDVI.apply(_)
-                case "ndwi" => NDWI.apply(_)
-                case _ => sys.error(s"UNKNOWN OPERATION")
-              }
-
-              val rdd = catalog.query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
-                .where(Intersects(extent))
-                .result
-              val md = rdd.metadata
-
-              val answer = ContextRDD(rdd.mapValues({ v => fn(v) }), md).polygonalMean(geometry)
-
-              JsObject("answer" -> JsNumber(answer))
             }
           }
         }
