@@ -13,6 +13,7 @@ export EXECUTOR_CORES := 2
 export YARN_OVERHEAD := 500
 
 export BBOX := -98.77,36.12,-91.93,41.48
+export MAX_CLOUDS := 1.0
 
 SERVER_ASSEMBLY := server/target/scala-2.10/server-assembly-0.1.0.jar
 INGEST_ASSEMBLY := ingest/target/scala-2.10/ingest-assembly-0.1.0.jar
@@ -71,7 +72,7 @@ start-ingest:
 --steps Type=CUSTOM_JAR,Name=Ingest,Jar=command-runner.jar,Args=[\
 spark-submit,--master,yarn-cluster,\
 --class,demo.LandsatIngestMain,\
---driver-memory,${EXECUTOR_MEMORY},\
+--driver-memory,${MASTER_MEMORY},\
 --executor-memory,${EXECUTOR_MEMORY},\
 --executor-cores,${EXECUTOR_CORES},\
 --conf,spark.dynamicAllocation.enabled=true,\
@@ -82,6 +83,7 @@ ${S3_URI}/ingest-assembly-0.1.0.jar,\
 --bbox,\"${BBOX}\",\
 --startDate,${START_DATE},\
 --endDate,${END_DATE},\
+--maxCloudCoverage,${MAX_CLOUDS},\
 --output,accumulo,\
 --params,\"instance=accumulo,table=tiles,user=root,password=secret\"\
 ] | cut -f2 | tee last-step-id.txt
