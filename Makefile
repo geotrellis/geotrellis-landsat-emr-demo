@@ -141,7 +141,7 @@ define UPSERT_BODY
     "ResourceRecordSet": {
       "Name": "${1}",
       "Type": "CNAME",
-      "TTL": 600,
+      "TTL": 300,
       "ResourceRecords": [{
         "Value": "${2}"
       }]
