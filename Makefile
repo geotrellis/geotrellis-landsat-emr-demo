@@ -3,27 +3,35 @@ export S3_URI := s3://geotrellis-test/emr
 export EC2_KEY := geotrellis-cluster
 
 export NAME := Landsat Ingest
-export WORKER_COUNT := 1
-export WORKER_INSTANCE:=m3.2xlarge
-export WORKER_PRICE := 0.15
 export MASTER_INSTANCE:=m3.xlarge
-export MASTER_PRICE := 0.15
-export EXECUTOR_MEMORY := 4900M
-export EXECUTOR_CORES := 2
-export YARN_OVERHEAD := 500
+export MASTER_PRICE := 0.5
+export MASTER_MEMORY := 10G
+export WORKER_INSTANCE:=m3.2xlarge
+export WORKER_COUNT := 25
+export WORKER_PRICE := 0.5
+export EXECUTOR_MEMORY := 9500M
+export EXECUTOR_CORES := 4
+export YARN_OVERHEAD := 700
+export USE_SPOT:=true
 
-export BBOX := -98.77,36.12,-91.93,41.48
+export BBOX := -118.89,48.98,-103.21,58.92
+export START_DATE := 2016-03-01
+export END_DATE := 2016-06-30
 export MAX_CLOUDS := 1.0
 
 SERVER_ASSEMBLY := server/target/scala-2.10/server-assembly-0.1.0.jar
 INGEST_ASSEMBLY := ingest/target/scala-2.10/ingest-assembly-0.1.0.jar
 SCRIPT_RUNNER := s3://elasticmapreduce/libs/script-runner/script-runner.jar
 
+ifeq ($(USE_SPOT),true)
+	MASTER_BID_PRICE:=BidPrice=${MASTER_PRICE},
+	WORKER_BID_PRICE:=BidPrice=${WORKER_PRICE},
+endif
+
 # Define functions to read cluster and step ids if they're not in the environment
 CID = $(shell echo $${CLUSTER_ID:-$$(< cluster-id.txt)})
 SID = $(shell echo $${STEP_ID:-$$(< last-step-id.txt)})
 MASTER_PUBLIC_DNS = $(shell aws emr describe-cluster --output text --cluster-id $(CID) | egrep "^CLUSTER" | cut -f5)
-
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
 ${SERVER_ASSEMBLY}: $(call rwildcard, server/src, *.scala) server/build.sbt
@@ -56,8 +64,8 @@ create-cluster:
 --ec2-attributes KeyName=${EC2_KEY} \
 --applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox \
 --instance-groups \
-Name=Master,InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTANCE} \
-Name=Workers,InstanceCount=${WORKER_COUNT},BidPrice=${WORKER_PRICE},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE} \
+Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTANCE} \
+Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE} \
 --bootstrap-actions \
 Name=BootstrapGeoWave,Path=${S3_URI}/bootstrap-geowave.sh \
 Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
