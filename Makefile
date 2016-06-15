@@ -17,7 +17,7 @@ export USE_SPOT:=true
 export BBOX := -118.89,48.98,-103.21,58.92
 export START_DATE := 2016-03-01
 export END_DATE := 2016-06-30
-export MAX_CLOUDS := 1.0
+export MAX_CLOUDS := 100.0
 
 SERVER_ASSEMBLY := server/target/scala-2.10/server-assembly-0.1.0.jar
 INGEST_ASSEMBLY := ingest/target/scala-2.10/ingest-assembly-0.1.0.jar
