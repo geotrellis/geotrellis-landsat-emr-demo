@@ -26,6 +26,7 @@ import org.apache.spark._
 import org.apache.spark.rdd._
 import org.apache.accumulo.core.client.security.tokens._
 
+import scala.util.Try
 import java.net._
 import java.io._
 import org.apache.commons.io.IOUtils
@@ -67,13 +68,13 @@ object LandsatIngest extends Logging {
     */
   def fetch(
     images: Seq[LandsatImage],
-    source: LandsatImage => ProjectedRaster[MultibandTile]
+    source: LandsatImage => Option[ProjectedRaster[MultibandTile]]
   )(implicit sc: SparkContext): RDD[(TemporalProjectedExtent, MultibandTile)] = {
     sc.parallelize(images, images.length) // each image gets its own partition
       .mapPartitions({ iter =>
         for {
           img <- iter
-          ProjectedRaster(raster, crs) = source(img)
+          ProjectedRaster(raster, crs) <- source(img).toList
           reprojected = raster.reproject(crs, WebMercator) // reprojection before chunking avoids NoData artifacts
           layoutCols = math.ceil(reprojected.cols.toDouble / 256).toInt
           layoutRows = math.ceil(reprojected.rows.toDouble / 256).toInt
@@ -91,7 +92,7 @@ object LandsatIngest extends Logging {
   def run(
     layerName: String,
     images: Seq[LandsatImage],
-    fetchMethod: LandsatImage => ProjectedRaster[MultibandTile],
+    fetchMethod: LandsatImage => Option[ProjectedRaster[MultibandTile]],
     writer: LayerWriter[LayerId]
   )(implicit sc: SparkContext): Unit = {
     // Our dataset can span UTM zones, we must reproject the tiles individually to common projection
@@ -138,11 +139,6 @@ object LandsatIngestMain extends Logging {
       .withMaxCloudCoverage(config.maxCloudCoverage)
       .intersects(config.bbox)
       .collect()
-      .filter{ img =>
-        val exists = img.imageExistsS3()
-        logger.info(s"Scene not found:  ${img.baseS3Path}")
-        exists
-      }
 
     logger.info(s"Found ${images.length} landsat images")
 
@@ -159,7 +155,11 @@ object LandsatIngestMain extends Logging {
       LandsatIngest.run(
         layerName = config.layerName,
         images = config.limit.fold(images)(images.take(_)),
-        fetchMethod = _.getRasterFromS3(bandsWanted = bandsWanted, hook = config.cacheHook),
+        fetchMethod = { img =>
+          Try { img.getRasterFromS3(bandsWanted = bandsWanted, hook = config.cacheHook) }
+            .recover{ case err => img.getFromGoogle(bandsWanted = bandsWanted, hook = config.cacheHook).raster }
+            .toOption
+        },
         writer = config.writer)
     } finally {
       sc.stop()
