@@ -146,11 +146,6 @@ Since our scripts rely on AWS CLI we must use the Jenkins credentials plugin to 
 
 ```console
 # Requires: S3_URI
-
-# Download viewer dependencies
-sh -xc "cd viewer && npm install"
-make -e upload-site || exit 1
-
 # Build and upload assemblies with scripts
 make -e upload-code || exit 1
 ```
