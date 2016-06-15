@@ -72,6 +72,7 @@ Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
 Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz] \
 | tee cluster-id.txt
 
+start-ingest: LAYER_NAME=landsat
 start-ingest:
 	@if [ -z $$START_DATE ]; then echo "START_DATE is not set" && exit 1; fi
 	@if [ -z $$END_DATE ]; then echo "END_DATE is not set" && exit 1; fi
@@ -87,7 +88,7 @@ spark-submit,--master,yarn-cluster,\
 --conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
 --conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
 ${S3_URI}/ingest-assembly-0.1.0.jar,\
---layerName,landsat,\
+--layerName,${LAYER_NAME},\
 --bbox,\"${BBOX}\",\
 --startDate,${START_DATE},\
 --endDate,${END_DATE},\
