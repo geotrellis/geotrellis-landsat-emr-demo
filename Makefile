@@ -21,6 +21,7 @@ SCRIPT_RUNNER := s3://elasticmapreduce/libs/script-runner/script-runner.jar
 # Define functions to read cluster and step ids if they're not in the environment
 CID = $(shell echo $${CLUSTER_ID:-$$(< cluster-id.txt)})
 SID = $(shell echo $${STEP_ID:-$$(< last-step-id.txt)})
+MASTER_PUBLIC_DNS = $(shell aws emr describe-cluster --output text --cluster-id $(CID) | egrep "^CLUSTER" | cut -f5)
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
@@ -131,4 +132,30 @@ local-tile-server:
 	spark-submit --name "${NAME} Service" --master "local" --driver-memory 1G \
 ${SERVER_ASSEMBLY} local ${CATALOG}
 
-.PHONY: local-ingest local-tile-server
+define UPSERT_BODY
+{
+  "Changes": [{
+    "Action": "UPSERT",
+    "ResourceRecordSet": {
+      "Name": "${1}",
+      "Type": "CNAME",
+      "TTL": 600,
+      "ResourceRecords": [{
+        "Value": "${2}"
+      }]
+    }
+  }]
+}
+endef
+
+update-route53: HOSTED_ZONE=ZIM2DOAEE0E8U
+update-route53: RECORD=geotrellis-ndvi.geotrellis.io
+update-route53: VALUE=$(MASTER_PUBLIC_DNS)
+update-route53: export UPSERT:=$(call UPSERT_BODY,${RECORD},${VALUE})
+update-route53:
+	@tee scripts/upsert.json <<< "$$UPSERT"
+	aws route53 change-resource-record-sets \
+--hosted-zone-id ${HOSTED_ZONE} \
+--change-batch "file://$(CURDIR)/scripts/upsert.json"
+
+.PHONY: local-ingest local-tile-server update-route53

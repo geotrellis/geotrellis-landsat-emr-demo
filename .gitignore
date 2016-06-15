@@ -35,3 +35,4 @@ _SUCCESS
 .ensime_cache
 tags
 catalog
+scripts/upsert.json
