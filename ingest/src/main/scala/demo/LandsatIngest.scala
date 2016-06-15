@@ -131,6 +131,7 @@ object LandsatIngestMain extends Logging {
     val config = Config.parse(args)
     logger.info(s"Config: $config")
 
+    implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
     val images = Landsat8Query()
       .withStartDate(config.startDate.toDateTimeAtStartOfDay)
       .withEndDate(config.endDate.toDateTimeAtStartOfDay)
@@ -152,7 +153,6 @@ object LandsatIngestMain extends Logging {
       "5",
       "QA")
 
-    implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
 
     try {
       /* TODO if the layer exists the ingest will fail, we need to use layer updater*/
