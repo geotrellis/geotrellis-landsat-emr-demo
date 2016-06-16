@@ -24,21 +24,18 @@ INGEST_ASSEMBLY := ingest/target/scala-2.10/ingest-assembly-0.1.0.jar
 SCRIPT_RUNNER := s3://elasticmapreduce/libs/script-runner/script-runner.jar
 
 ifeq ($(USE_SPOT),true)
-	MASTER_BID_PRICE:=BidPrice=${MASTER_PRICE},
-	WORKER_BID_PRICE:=BidPrice=${WORKER_PRICE},
+MASTER_BID_PRICE:=BidPrice=${MASTER_PRICE},
+WORKER_BID_PRICE:=BidPrice=${WORKER_PRICE},
 endif
 
 ifdef COLOR
-	COLOR_TAG=--tags Color=${COLOR}
+COLOR_TAG=--tags Color=${COLOR}
 endif
 
-# Define functions to read cluster and step ids if they're not in the environment
 ifndef CLUSTER_ID
-CLUSTER_ID:=$(shell cat cluster-id.txt)
+CLUSTER_ID=$(shell cat cluster-id.txt)
 endif
-ifndef STEP_ID
-STEP_ID:=$(shell cat last-step-id.txt)
-endif
+
 MASTER_PUBLIC_DNS = $(shell aws emr describe-cluster --output text --cluster-id $(CLUSTER_ID) | egrep "^CLUSTER" | cut -f5)
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
@@ -105,10 +102,11 @@ ${S3_URI}/ingest-assembly-0.1.0.jar,\
 --params,\"instance=accumulo,table=tiles,user=root,password=secret\"\
 ] | cut -f2 | tee last-step-id.txt
 
-wait: INTERVAL=60
+wait: INTERVAL:=60
+wait: STEP_ID=$(shell cat last-step-id.txt)
 wait:
 	@while (true); do \
-	OUT=$$(aws emr describe-step --cluster-id ${CLUSTER_ID} --step-id ${SID}); \
+	OUT=$$(aws emr describe-step --cluster-id ${CLUSTER_ID} --step-id ${STEP_ID}); \
 	[[ $$OUT =~ (\"State\": \"([A-Z]+)\") ]]; \
 	echo $${BASH_REMATCH[2]}; \
 	case $${BASH_REMATCH[2]} in \
@@ -176,8 +174,5 @@ update-route53:
 	aws route53 change-resource-record-sets \
 --hosted-zone-id ${HOSTED_ZONE} \
 --change-batch "file://$(CURDIR)/scripts/upsert.json"
-
-test:
-	echo ${CLUSTER_ID}
 
 .PHONY: local-ingest local-tile-server update-route53 test
