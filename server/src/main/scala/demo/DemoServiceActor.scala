@@ -135,39 +135,26 @@ class DemoServiceActor(
                   case _ => sys.error(s"UNKNOWN OPERATION")
                 }
 
-                val rdd = catalog
+                val rdd1 = catalog
                   .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
                   .where(At(DateTime.parse(time, dateTimeFormat)))
                   .where(Intersects(extent))
                   .result
-                val md = rdd.metadata
+                val answer1 = ContextRDD(rdd1.mapValues({ v => fn(v) }), rdd1.metadata).polygonalMean(geometry)
 
-                val answer: Double = otherTime match {
-                  case None =>
-                    // The metadata are not correct here, but that is
-                    // okay in this instance because the polygonalMean
-                    // method does not need them to be.
-                    ContextRDD(rdd.mapValues({ v => fn(v) }), md).polygonalMean(geometry)
+                val answer2: Double = otherTime match {
+                  case None => 0.0
                   case Some(otherTime) =>
                     val rdd2 = catalog
                       .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
                       .where(At(DateTime.parse(otherTime, dateTimeFormat)))
                       .where(Intersects(extent))
                       .result
-                      .map({ case (k,v) => (k.spatialKey, fn(v)) })
-                    val rdd3 = rdd.map({ case (k,v) => (k.spatialKey, fn(v)) })
-                      .join(rdd2).map({ case (k, (v1, v2)) =>
-                        (k, v1.combineDouble(v2)({ (a, b) => a - b }))
-                      })
 
-                    val cellType = rdd3.first._2.cellType
-                    val stBounds = md.bounds.asInstanceOf[KeyBounds[SpaceTimeKey]]
-                    val bounds = KeyBounds(stBounds.minKey.spatialKey, stBounds.maxKey.spatialKey)
-                    val metadata = TileLayerMetadata(cellType, md.layout, md.extent, md.crs, bounds)
-
-                    // Ditto note about the metadata
-                    ContextRDD(rdd3, metadata).polygonalMean(geometry)
+                    ContextRDD(rdd2.mapValues({ v => fn(v) }), rdd2.metadata).polygonalMean(geometry)
                 }
+
+                val answer = answer1 - answer2
 
                 JsObject("answer" -> JsNumber(answer))
               }
