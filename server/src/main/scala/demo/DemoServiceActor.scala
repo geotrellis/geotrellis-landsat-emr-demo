@@ -33,6 +33,8 @@ import com.github.nscala_time.time.Imports._
 import scala.concurrent._
 import spire.syntax.cfor._
 
+import scala.util.Try
+
 class DemoServiceActor(
   readerSet: ReaderSet,
   sc: SparkContext
@@ -191,7 +193,10 @@ class DemoServiceActor(
                 .map { name =>
                   // assemble catalog from metadata common to all zoom levels
                   val extent = {
-                    val (extent, crs) = attributeStore.read[(Extent, CRS)](LayerId(name, 0), "extent")
+                    val (extent, crs) = Try{
+                      attributeStore.read[(Extent, CRS)](LayerId(name, 0), "extent")
+                    }.getOrElse((LatLng.worldExtent, LatLng))
+
                     extent.reproject(crs, LatLng)
                   }
 
