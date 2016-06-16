@@ -97,6 +97,14 @@ var Leaflet = React.createClass({
       );
     }
 
+    var polyOptions = {
+      stroke: true,
+      weight: 3,
+      color: '#64c59d',
+      fillOpacity: 0.15,
+      fillColor: null // falls back on stroke color
+    }
+
     console.log(vectorLayers);
 
     return (
@@ -112,9 +120,9 @@ var Leaflet = React.createClass({
             draw={{
               line: false,
               polyline: false,
-              rectangle: true,
               circle: false,
-              polygon: true,
+              rectangle: { shapeOptions: polyOptions },
+              polygon: { shapeOptions: polyOptions },
               marker: true
             }}
           />
