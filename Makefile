@@ -78,7 +78,7 @@ start-ingest:
 	@if [ -z $$END_DATE ]; then echo "END_DATE is not set" && exit 1; fi
 
 	aws emr add-steps --output text --cluster-id ${CID} \
---steps Type=CUSTOM_JAR,Name=Ingest,Jar=command-runner.jar,Args=[\
+--steps Type=CUSTOM_JAR,Name="Ingest ${LAYER_NAME}",Jar=command-runner.jar,Args=[\
 spark-submit,--master,yarn-cluster,\
 --class,demo.LandsatIngestMain,\
 --driver-memory,${MASTER_MEMORY},\
@@ -88,7 +88,7 @@ spark-submit,--master,yarn-cluster,\
 --conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
 --conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
 ${S3_URI}/ingest-assembly-0.1.0.jar,\
---layerName,${LAYER_NAME},\
+--layerName,"${LAYER_NAME}",\
 --bbox,\"${BBOX}\",\
 --startDate,${START_DATE},\
 --endDate,${END_DATE},\
