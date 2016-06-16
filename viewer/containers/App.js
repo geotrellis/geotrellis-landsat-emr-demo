@@ -16,12 +16,20 @@ var App = React.createClass({
     <div className="row">
         <div className="col-md-9">
           <Leaflet
+            t1={this.props.t1}
+            t2={this.props.t2}
+            layerName={this.props.layerName}
+            rootUrl={this.props.rootUrl}
+            layers={this.props.catalog.layers}
+            activeLayerId={this.props.map.activeLayerId}
             url={this.props.map.url}
             bounds={this.props.map.bounds}
             maxState={this.props.map.maxState}
             maxAverageState={this.props.map.maxAverageState}
             stateAverage={this.props.map.stateAverage}
-            stateDiffAverage={this.props.map.stateDiffAverage} />
+            stateDiffAverage={this.props.map.stateDiffAverage}
+            fetchPolygonalSummary={this.props.actions.fetchPolygonalSummary}
+            fetchTimeSeries={this.props.actions.fetchTimeSeries} />
         </div>
 
         <div className="col-md-3" >
@@ -42,7 +50,10 @@ var App = React.createClass({
               showMaxAverageState={this.props.actions.showMaxAverageState}
               hideMaxAverageState={this.props.actions.hideMaxAverageState}
               showStateAverage={this.props.actions.showStateAverage}
-              showStateDiffAverage={this.props.actions.showStateDiffAverage} />
+              showStateDiffAverage={this.props.actions.showStateDiffAverage}
+              setLayerName={this.props.actions.setLayerName}
+              setTime={this.props.actions.setTime}
+            />
           </div>
         </div>
       </div>

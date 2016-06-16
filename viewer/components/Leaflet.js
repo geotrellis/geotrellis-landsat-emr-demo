@@ -1,10 +1,31 @@
 import React from 'react';
 import { render } from 'react-dom';
-import { Map, Marker, Popup, TileLayer, BaseTileLayer, GeoJson } from 'react-leaflet';
+import { Map, Marker, Popup, TileLayer, BaseTileLayer, GeoJson, FeatureGroup, Circle } from 'react-leaflet';
+import { EditControl } from 'react-leaflet-draw';
+import _ from 'lodash';
 import "leaflet/dist/leaflet.css";
+import 'leaflet-draw/dist/leaflet.draw.css';
 
 var Leaflet = React.createClass({
+
+  // Structure: /mean/{layer}/{zoom}/{ndwi/ndvi}?time=2015-06-29T00:00:00-0400'
+  _onDraw: function(geom) {
+    let root = this.props.rootUrl;
+    let zoom = geom.layer._map._zoom;
+    let t1 = this.props.times[0];
+    let t2 = this.props.times[1];
+    let layerName = this.props.layers[this.props.activeLayerId];
+    let ndi = this.props.ndi;
+
+    if (geom.layerType == 'marker') { // For point timeseries
+      this.props.fetchTimeSeries(geom.layer);
+    } else { // For polygonal summary (mean)
+      this.props.fetchPolygonalSummary(geom.layer);
+    }
+  },
+
   render: function() {
+    console.log(this.props);
     const style = {
       minHeight: "800px", width: "100%"
     };
@@ -21,9 +42,9 @@ var Leaflet = React.createClass({
       let state = this.props.maxAverageState;
       vectorLayers.push(
         <GeoJson data={state}
-        fillOpacity={0.0}
-        color="#333300"
-        weight={3}>
+          fillOpacity={0.0}
+          color="#333300"
+          weight={3}>
           <Popup>
             <div>
               <p><b>Name:</b> {state.properties.name}</p>
@@ -38,9 +59,9 @@ var Leaflet = React.createClass({
       let state = this.props.stateAverage;
       vectorLayers.push(
         <GeoJson data={state}
-        fillOpacity={0.0}
-        color="#333300"
-        weight={3}>
+          fillOpacity={0.0}
+          color="#333300"
+          weight={3}>
           <Popup>
             <div>
               <p><b>Name:</b> {state.properties.name}</p>
@@ -55,9 +76,9 @@ var Leaflet = React.createClass({
       let state = this.props.stateDiffAverage;
       vectorLayers.push(
         <GeoJson data={state}
-        fillOpacity={0.0}
-        color="#333300"
-        weight={3}>
+          fillOpacity={0.0}
+          color="#333300"
+          weight={3}>
           <Popup>
             <div>
               <p>Name: <b>{state.properties.name}</b></p>
@@ -71,12 +92,25 @@ var Leaflet = React.createClass({
     console.log(vectorLayers);
 
     return (
-      <Map center ={[37.062,-121.530]} zoom={8} style={style} bounds={this.props.bounds}>
-        <TileLayer
-          url="http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"
-        />
+      <Map center ={[37.062, -121.530]} zoom={8} style={style} bounds={this.props.bounds}>
+        <TileLayer url="http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"/>
         {tileLayers}
         {vectorLayers}
+        <FeatureGroup>
+          <EditControl
+            position='topleft'
+            onCreated={this._onDraw}
+            onEdited={this._onDraw}
+            draw={{
+              line: false,
+              polyline: false,
+              rectangle: true,
+              circle: false,
+              polygon: true,
+              marker: true
+            }}
+          />
+        </FeatureGroup>
       </Map>
     );
   }

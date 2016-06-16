@@ -54,8 +54,13 @@ var MapViews = React.createClass({
   },
   updateMap: function (state) {
     if (! state) {state = this.state; }
-    ifAllDefined(this.props.showLayerWithBreaks, this.props.showLayer, this.props.rootUrl, state.operation, this.props.layers[state.layerId], state.timeId1, state.timeId2)
-      (updateIntraLayerDiffMap);
+    ifAllDefined(this.props.showLayerWithBreaks,
+                 this.props.showLayer,
+                 this.props.rootUrl,
+                 state.operation,
+                 this.props.layers[state.layerId],
+                 state.timeId1,
+                 state.timeId2)(updateIntraLayerDiffMap);
     this.props.showExtent(this.props.layers[state.layerId].extent);
   },
   componentWillReceiveProps: function (nextProps){

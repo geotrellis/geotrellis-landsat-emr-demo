@@ -8,7 +8,7 @@ var finalCreateStore = compose(
 )(createStore);
 
 var configureStore = function(initialState) {
-  initialState = initialState || {todos: []};
+  initialState = initialState || {};
   return finalCreateStore(reducer, initialState);
 };
 

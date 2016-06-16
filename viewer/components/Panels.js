@@ -1,7 +1,7 @@
 "use strict";
 import React from 'react';
 import _ from 'lodash';
-import { PanelGroup, Panel, Input, Button, ButtonGroup } from 'react-bootstrap';
+import { PanelGroup, Panel, Input, Button, ButtonGroup, Form } from 'react-bootstrap';
 import SingleLayer from "./SingleLayer";
 import DiffLayer from "./DiffLayer";
 import DiffLayers from "./DiffLayers";
@@ -108,7 +108,10 @@ var Panels = React.createClass({
             activeLayerId={this.props.activeLayerId}
             showLayer={this.showLayer(1)}
             showLayerWithBreaks={this.showLayerWithBreaks(1)}
-            showExtent={this.showExtent(1)} />
+            showExtent={this.showExtent(1)}
+            setLayerName={this.props.setLayerName}
+            setTime={this.props.setTime}
+          />
         </Panel>
 
         <Panel header="Change Detection" eventKey="2" id={2}>

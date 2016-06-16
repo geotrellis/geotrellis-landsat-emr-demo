@@ -1,5 +1,17 @@
 var reducer = function (state, action) {
   switch (action.type) {
+    case 'SET_T1':
+      return Object.assign({}, state, {
+        't1': action.time
+      });
+    case 'SET_T2':
+      return Object.assign({}, state, {
+        't2': action.time
+      });
+    case 'SET_LAYERNAME':
+      return Object.assign({}, state, {
+        layerName: action.name
+      });
     case 'SHOW_LAYER':
       return Object.assign({}, state, {
         map: {
