@@ -98,9 +98,9 @@ ${S3_URI}/ingest-assembly-0.1.0.jar,\
 --bbox,\"${BBOX}\",\
 --startDate,${START_DATE},\
 --endDate,${END_DATE},\
---maxCloudCoverage,${MAX_CLOUDS},\
---output,accumulo,\
+--maxCloudCoverage,${MAX_CLOUD_COVERAGE},\
 --limit,${LIMIT},\
+--output,accumulo,\
 --params,\"instance=accumulo,table=tiles,user=root,password=secret\"\
 ] | cut -f2 | tee last-step-id.txt
 
