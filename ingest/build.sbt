@@ -26,4 +26,3 @@ assemblyMergeStrategy in assembly := {
   case _ => MergeStrategy.first
 }
 
-net.virtualvoid.sbt.graph.Plugin.graphSettings

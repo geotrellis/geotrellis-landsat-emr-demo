@@ -67,39 +67,41 @@ class DemoServiceActor(
 
     pathPrefix(Segment / IntNumber / Segment) { (layer, zoom, op) =>
       parameters('lat, 'lng) { (lat, lng) =>
-        complete {
-          val catalog = readerSet.layerReader
-          val layerId = LayerId(layer, zoom)
+        cors {
+          complete {
+            val catalog = readerSet.layerReader
+            val layerId = LayerId(layer, zoom)
 
-          val geometry = Point(lng.toDouble, lat.toDouble).reproject(LatLng, WebMercator)
-          val extent = geometry.envelope
+            val geometry = Point(lng.toDouble, lat.toDouble).reproject(LatLng, WebMercator)
+            val extent = geometry.envelope
 
-          // Wasteful but safe
-          val fn = op match {
-            case "ndvi" => NDVI.apply(_)
-            case "ndwi" => NDWI.apply(_)
-            case _ => sys.error(s"UNKNOWN OPERATION")
-          }
+            // Wasteful but safe
+            val fn = op match {
+              case "ndvi" => NDVI.apply(_)
+              case "ndwi" => NDWI.apply(_)
+              case _ => sys.error(s"UNKNOWN OPERATION")
+            }
 
-          val rdd = catalog.query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
-            .where(Intersects(extent))
-            .result
-          val mt = rdd.metadata.mapTransform
+            val rdd = catalog.query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
+              .where(Intersects(extent))
+              .result
+            val mt = rdd.metadata.mapTransform
 
-          val answer = rdd.map({ case (k, v) =>
-            val re = RasterExtent(mt(k), v.cols, v.rows)
-            var retval: Double = 0.0
+            val answer = rdd.map({ case (k, v) =>
+              val re = RasterExtent(mt(k), v.cols, v.rows)
+              var retval: Double = 0.0
 
-            Rasterizer.foreachCellByGeometry(geometry, re)({ (col,row) =>
-              val tile = fn(v)
-              retval = tile.getDouble(col, row)
+              Rasterizer.foreachCellByGeometry(geometry, re)({ (col,row) =>
+                val tile = fn(v)
+                retval = tile.getDouble(col, row)
+              })
+              (k.time, retval)
             })
-            (k.time, retval)
-          })
-            .collect
-            .toJson
+              .collect
+              .toJson
 
-          JsObject("answer" -> answer)
+            JsObject("answer" -> answer)
+          }
         }
       }
     }

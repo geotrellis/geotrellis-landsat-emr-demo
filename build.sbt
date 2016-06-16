@@ -23,7 +23,7 @@ lazy val commonSettings = Seq(
     Resolver.bintrayRepo("azavea", "maven")),
 
   shellPrompt := { s => Project.extract(s).currentProject.id + " > " }
-) ++ net.virtualvoid.sbt.graph.Plugin.graphSettings
+)
 
 lazy val root = Project("demo", file("."))
   .aggregate(ingest, server)
