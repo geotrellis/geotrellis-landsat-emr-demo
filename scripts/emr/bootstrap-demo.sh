@@ -21,6 +21,7 @@ echo "\
 description \"Landsat Demo Tile Server\"
 start on started hadoop-hdfs-namenode
 stop on stopping hadoop-hdfs-namenode
+console log
 respawn
 respawn limit unlimited
 exec spark-submit --master yarn-client \
