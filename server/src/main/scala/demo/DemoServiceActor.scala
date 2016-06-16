@@ -68,7 +68,7 @@ class DemoServiceActor(
     pathPrefix(Segment / IntNumber / Segment) { (layer, zoom, op) =>
       parameters('lat, 'lng) { (lat, lng) =>
         cors {
-          complete {
+          complete { future {
             val catalog = readerSet.layerReader
             val layerId = LayerId(layer, zoom)
 
@@ -100,8 +100,8 @@ class DemoServiceActor(
               .collect
               .toJson
 
-            JsObject("answer" -> answer)
-          }
+              JsObject("answer" -> answer)
+          } }
         }
       }
     }
@@ -115,7 +115,7 @@ class DemoServiceActor(
         cors {
           post {
             entity(as[String]) { json =>
-              complete {
+              complete { future {
                 val catalog = readerSet.layerReader
                 val layerId = LayerId(layer, zoom)
 
@@ -159,7 +159,7 @@ class DemoServiceActor(
                 val answer = answer1 - answer2
 
                 JsObject("answer" -> JsNumber(answer))
-              }
+              } }
             }
           }
         }
