@@ -72,11 +72,7 @@ var AverageByState = React.createClass({
       this.setState(newState);
       var layer1 = nextProps.layers[0];
       var layer2 = nextProps.layers[1];
-      updateAverageDiffByStateMap(nextProps.showLayerWithBreaks,
-                                  this.props.showStateDiffAverage,
-                                  nextProps.rootUrl,
-                                  usStates[this.state.usStateId],
-                                  layer1, 0, layer2, 0);
+      updateAverageDiffByStateMap(nextProps.showLayerWithBreaks, this.props.showStateDiffAverage, nextProps.rootUrl, usStates[this.state.usStateId], layer1, 0, layer2, 0);
       nextProps.showExtent(layer1.extent);
     }
   },

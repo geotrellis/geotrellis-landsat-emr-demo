@@ -1,7 +1,7 @@
 "use strict";
 import React from 'react';
 import _ from 'lodash';
-import { PanelGroup, Panel, Input, Button, ButtonGroup, Form } from 'react-bootstrap';
+import { PanelGroup, Panel, Input, Button, ButtonGroup } from 'react-bootstrap';
 import SingleLayer from "./SingleLayer";
 import DiffLayer from "./DiffLayer";
 import DiffLayers from "./DiffLayers";
@@ -15,9 +15,6 @@ var Panels = React.createClass({
       autoZoom: true
     };
   },
-  handleNDI: function(ndi) {
-    this.props.setIndexType(ndi);
-  },
   handleAutoZoom: function(e) {
     let v = e.target.checked || false;
     this.setState(_.merge({}, this.state, {autoZoom: v}));
@@ -27,11 +24,6 @@ var Panels = React.createClass({
     console.log("PANE SELECT %s", id);
     let newState = _.merge({}, this.state, { activePane: +id });
     this.setState(newState);
-    if (id == 1) {
-      this.props.setLayerType('singleLayer');
-    } else if (id == 2) {
-      this.props.setLayerType('intraLayerDiff');
-    }
   },
   updateState: function(target, value) {
     let newState = _merge({}, this.state, {[target]: value});
@@ -107,10 +99,6 @@ var Panels = React.createClass({
     return (
     <div>
       <Input type="checkbox" label="Snap to layer extent" checked={this.state.autoZoom} onChange={this.handleAutoZoom} />
-      <ButtonGroup>
-        <Button active={this.props.ndi == 'ndvi'} onClick={() => this.props.setIndexType('ndvi')}>NDVI</Button>
-        <Button active={this.props.ndi == 'ndwi'} onClick={() => this.props.setIndexType('ndwi')}>NDWI</Button>
-      </ButtonGroup>
       <PanelGroup defaultActiveKey="1" accordion={true} onSelect={this.handlePaneSelect}>
         <Panel header="Single Layer" eventKey="1" id={1}>
           <SingleLayer
@@ -120,10 +108,7 @@ var Panels = React.createClass({
             activeLayerId={this.props.activeLayerId}
             showLayer={this.showLayer(1)}
             showLayerWithBreaks={this.showLayerWithBreaks(1)}
-            showExtent={this.showExtent(1)}
-            setLayerName={this.props.setLayerName}
-            registerTime={this.props.registerTime}
-          />
+            showExtent={this.showExtent(1)} />
         </Panel>
 
         <Panel header="Change Detection" eventKey="2" id={2}>
@@ -133,8 +118,7 @@ var Panels = React.createClass({
             layers={this.props.layers}
             showLayer={this.showLayer(2)}
             showLayerWithBreaks={this.showLayerWithBreaks(2)}
-            showExtent={this.showExtent(2)}
-          />
+            showExtent={this.showExtent(2)} />
         </Panel>
 
         { showNEXLayers ?

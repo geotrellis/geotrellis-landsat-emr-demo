@@ -1,20 +1,5 @@
 var reducer = function (state, action) {
   switch (action.type) {
-    case 'SET_NDI':
-      return Object.assign({}, state, { ndi: action.ndi });
-    case 'SET_LAYER_TYPE':
-      return Object.assign({}, state, { layerType: action.layerType });
-    case 'REGISTER_TIME':
-      var updatedTimes = state.times;
-      updatedTimes[state.layerName][action.index] = action.time;
-      return Object.assign({}, state, { times: updatedTimes });
-    case 'SET_LAYERNAME':
-      var delta = {
-        layerName: action.name,
-        times: {}
-      };
-      if (! state.times[action.name]) { delta.times[action.name] = []; }
-      return Object.assign({}, state, delta);
     case 'SHOW_LAYER':
       return Object.assign({}, state, {
         map: {
@@ -22,20 +7,18 @@ var reducer = function (state, action) {
           activeLayerId: action.id
         }
       });
+
     case 'CENTER_MAP':
       return Object.assign({}, state, {
-        map: { extent: action.extent }
+        map: {
+          extent: action.extent
+        }
       });
+
     case 'LOAD_CATALOG_SUCCESS': {
-      // On new catalog, set layer to first in list; times to the corresponding times
-      var layer = action.catalog.layers[0];
-      var times = {};
-      times[layer.name] = layer.times;
       return Object.assign({}, state, {
         rootUrl: action.url,
-        catalog: action.catalog,
-        layerName: layer.name,
-        times: times // set this to be equal to times - values are updated later
+        catalog: action.catalog
       });
     }
     case 'SHOW_BOUNDS': {
