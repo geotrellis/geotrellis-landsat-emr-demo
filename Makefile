@@ -172,7 +172,7 @@ endef
 update-route53: HOSTED_ZONE=ZIM2DOAEE0E8U
 update-route53: RECORD=geotrellis-ndvi.geotrellis.io
 update-route53: VALUE=$(shell aws emr describe-cluster --output text --cluster-id $(CLUSTER_ID) | egrep "^CLUSTER" | cut -f5)
-update-route53: UPSERT=$(call UPSERT_BODY,${RECORD},${VALUE})
+update-route53: export UPSERT=$(call UPSERT_BODY,${RECORD},${VALUE})
 update-route53:
 	@tee scripts/upsert.json <<< "$$UPSERT"
 	aws route53 change-resource-record-sets \
