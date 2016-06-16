@@ -42,7 +42,6 @@ class DemoServiceActor(
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val dateTimeFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ")
-
   val metadataReader = readerSet.metadataReader
   val attributeStore = readerSet.attributeStore
 
@@ -69,9 +68,7 @@ class DemoServiceActor(
           complete { future {
             val catalog = readerSet.layerReader
             val layerId = LayerId(layer, zoom)
-
-            val geometry = Point(lng.toDouble, lat.toDouble).reproject(LatLng, WebMercator)
-            val extent = geometry.envelope
+            val point = Point(lng.toDouble, lat.toDouble).reproject(LatLng, WebMercator)
 
             // Wasteful but safe
             val fn = op match {
@@ -81,21 +78,22 @@ class DemoServiceActor(
             }
 
             val rdd = catalog.query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
-              .where(Intersects(extent))
+              .where(Intersects(point.envelope))
               .result
+
             val mt = rdd.metadata.mapTransform
 
-            val answer = rdd.map({ case (k, v) =>
-              val re = RasterExtent(mt(k), v.cols, v.rows)
-              var retval: Double = 0.0
-
-              Rasterizer.foreachCellByGeometry(geometry, re)({ (col,row) =>
-                val tile = fn(v)
-                retval = tile.getDouble(col, row)
-              })
-              (k.time, retval)
-            })
+            val answer = rdd
+              .map { case (k, tile) =>
+                // reconstruct tile raster extent so we can map the point to the tile cell
+                val re = RasterExtent(mt(k), tile.cols, tile.rows)
+                val (tileCol, tileRow) = re.mapToGrid(point)
+                val ret = fn(tile).getDouble(tileCol, tileRow)
+                println(s"$point equals $ret at ($tileCol, $tileRow) in tile $re ")
+                (k.time, ret)
+              }
               .collect
+              .filterNot(_._2.isNaN)
               .toJson
 
               JsObject("answer" -> answer)
