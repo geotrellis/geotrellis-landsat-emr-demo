@@ -38,7 +38,7 @@ import scala.util.Try
 class DemoServiceActor(
   readerSet: ReaderSet,
   sc: SparkContext
-) extends Actor with HttpService {
+) extends Actor with HttpService with CORSSupport {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val dateTimeFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ")
@@ -48,8 +48,6 @@ class DemoServiceActor(
 
   def isLandsat(name: String) =
     name.contains("landsat")
-
-  def cors: Directive0 = respondWithHeader(RawHeader("Access-Control-Allow-Origin", "*"))
 
   def actorRefFactory = context
   def receive = runRoute(root)
