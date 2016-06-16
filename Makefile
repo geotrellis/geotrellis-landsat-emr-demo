@@ -2,22 +2,24 @@ export AWS_DEFAULT_REGION := us-east-1
 export S3_URI := s3://geotrellis-test/emr
 export EC2_KEY := geotrellis-cluster
 export SUBNET_ID := subnet-c5fefdb1
-export NAME := Landsat Ingest
+export NAME := Landsat Demo
 export MASTER_INSTANCE:=m3.xlarge
 export MASTER_PRICE := 0.5
 export MASTER_MEMORY := 10G
 export WORKER_INSTANCE:=m3.2xlarge
-export WORKER_COUNT := 25
+export WORKER_COUNT := 5
 export WORKER_PRICE := 0.5
 export EXECUTOR_MEMORY := 9500M
 export EXECUTOR_CORES := 4
 export YARN_OVERHEAD := 700
 export USE_SPOT:=true
 
-export BBOX := -118.89,48.98,-103.21,58.92
-export START_DATE := 2016-03-01
-export END_DATE := 2016-06-30
-export MAX_CLOUDS := 100.0
+# Japan typhoon
+export LAYER_NAME := japan-typhoon
+export START_DATE := 2015-07-01
+export END_DATE := 2015-11-30
+export BBOX := 135.35,33.23,143.01,41.1
+export MAX_CLOUD_COVERAGE := 20.0
 
 SERVER_ASSEMBLY := server/target/scala-2.10/server-assembly-0.1.0.jar
 INGEST_ASSEMBLY := ingest/target/scala-2.10/ingest-assembly-0.1.0.jar
@@ -33,10 +35,9 @@ COLOR_TAG=--tags Color=${COLOR}
 endif
 
 ifndef CLUSTER_ID
-CLUSTER_ID=$(shell cat cluster-id.txt)
+CLUSTER_ID=$(shell if [ -e "cluster-id.txt" ]; then cat cluster-id.txt; fi)
 endif
 
-MASTER_PUBLIC_DNS = $(shell aws emr describe-cluster --output text --cluster-id $(CLUSTER_ID) | egrep "^CLUSTER" | cut -f5)
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
 ${SERVER_ASSEMBLY}: $(call rwildcard, server/src, *.scala) server/build.sbt
@@ -48,7 +49,7 @@ ${INGEST_ASSEMBLY}: $(call rwildcard, ingest/src, *.scala) ingest/build.sbt
 	@touch -m ${INGEST_ASSEMBLY}
 
 viewer/site.tgz: $(call rwildcard, viewer/components, *.js)
-	@cd viewer && npm run build
+	@cd viewer && npm install &&npm run build
 	tar -czf viewer/site.tgz -C viewer/dist .
 
 upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
@@ -77,7 +78,7 @@ Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
 Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz] \
 | tee cluster-id.txt
 
-start-ingest: LAYER_NAME:=landsat
+start-ingest: LIMIT=9999
 start-ingest:
 	@if [ -z $$START_DATE ]; then echo "START_DATE is not set" && exit 1; fi
 	@if [ -z $$END_DATE ]; then echo "END_DATE is not set" && exit 1; fi
@@ -99,6 +100,7 @@ ${S3_URI}/ingest-assembly-0.1.0.jar,\
 --endDate,${END_DATE},\
 --maxCloudCoverage,${MAX_CLOUDS},\
 --output,accumulo,\
+--limit,${LIMIT},\
 --params,\"instance=accumulo,table=tiles,user=root,password=secret\"\
 ] | cut -f2 | tee last-step-id.txt
 
@@ -123,6 +125,8 @@ terminate-cluster:
 
 clean:
 	./sbt clean -no-colors
+	rm -rf viewer/site.tgz
+	rm -rf viewer/dist/*
 
 proxy:
 	aws emr socks --cluster-id ${CLUSTER_ID} --key-pair-file "${HOME}/${EC2_KEY}.pem"
@@ -131,7 +135,7 @@ ssh:
 	aws emr ssh --cluster-id ${CLUSTER_ID} --key-pair-file "${HOME}/${EC2_KEY}.pem"
 
 local-ingest: CATALOG=catalog
-local-ingest: LIMIT=1
+local-ingest: LIMIT=9999
 local-ingest: ${INGEST_ASSEMBLY}
 	@if [ -z $$START_DATE ]; then echo "START_DATE is not set" && exit 1; fi
 	@if [ -z $$END_DATE ]; then echo "END_DATE is not set" && exit 1; fi
@@ -167,12 +171,12 @@ endef
 
 update-route53: HOSTED_ZONE=ZIM2DOAEE0E8U
 update-route53: RECORD=geotrellis-ndvi.geotrellis.io
-update-route53: VALUE=$(MASTER_PUBLIC_DNS)
-update-route53: export UPSERT:=$(call UPSERT_BODY,${RECORD},${VALUE})
+update-route53: VALUE=$(shell aws emr describe-cluster --output text --cluster-id $(CLUSTER_ID) | egrep "^CLUSTER" | cut -f5)
+update-route53: UPSERT=$(call UPSERT_BODY,${RECORD},${VALUE})
 update-route53:
 	@tee scripts/upsert.json <<< "$$UPSERT"
 	aws route53 change-resource-record-sets \
 --hosted-zone-id ${HOSTED_ZONE} \
 --change-batch "file://$(CURDIR)/scripts/upsert.json"
 
-.PHONY: local-ingest local-tile-server update-route53 test
+.PHONY: local-ingest local-tile-server update-route53
