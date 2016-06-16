@@ -27,4 +27,3 @@ assemblyMergeStrategy in assembly := {
 }
 
 Revolver.settings
-net.virtualvoid.sbt.graph.Plugin.graphSettings
