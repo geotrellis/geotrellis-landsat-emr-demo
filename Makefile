@@ -28,10 +28,18 @@ ifeq ($(USE_SPOT),true)
 	WORKER_BID_PRICE:=BidPrice=${WORKER_PRICE},
 endif
 
+ifdef COLOR
+	COLOR_TAG=--tags Color=${COLOR}
+endif
+
 # Define functions to read cluster and step ids if they're not in the environment
-CID = $(shell echo $${CLUSTER_ID:-$$(< cluster-id.txt)})
-SID = $(shell echo $${STEP_ID:-$$(< last-step-id.txt)})
-MASTER_PUBLIC_DNS = $(shell aws emr describe-cluster --output text --cluster-id $(CID) | egrep "^CLUSTER" | cut -f5)
+ifndef CLUSTER_ID
+CLUSTER_ID:=$(shell cat cluster-id.txt)
+endif
+ifndef STEP_ID
+STEP_ID:=$(shell cat last-step-id.txt)
+endif
+MASTER_PUBLIC_DNS = $(shell aws emr describe-cluster --output text --cluster-id $(CLUSTER_ID) | egrep "^CLUSTER" | cut -f5)
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
 ${SERVER_ASSEMBLY}: $(call rwildcard, server/src, *.scala) server/build.sbt
@@ -55,7 +63,7 @@ upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
 	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
 
 create-cluster:
-	aws emr create-cluster --name "${NAME}" \
+	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
 --release-label emr-4.5.0 \
 --output text \
 --use-default-roles \
@@ -77,7 +85,7 @@ start-ingest:
 	@if [ -z $$START_DATE ]; then echo "START_DATE is not set" && exit 1; fi
 	@if [ -z $$END_DATE ]; then echo "END_DATE is not set" && exit 1; fi
 
-	aws emr add-steps --output text --cluster-id ${CID} \
+	aws emr add-steps --output text --cluster-id ${CLUSTER_ID} \
 --steps Type=CUSTOM_JAR,Name="Ingest ${LAYER_NAME}",Jar=command-runner.jar,Args=[\
 spark-submit,--master,yarn-cluster,\
 --class,demo.LandsatIngestMain,\
@@ -100,7 +108,7 @@ ${S3_URI}/ingest-assembly-0.1.0.jar,\
 wait: INTERVAL=60
 wait:
 	@while (true); do \
-	OUT=$$(aws emr describe-step --cluster-id ${CID} --step-id ${SID}); \
+	OUT=$$(aws emr describe-step --cluster-id ${CLUSTER_ID} --step-id ${SID}); \
 	[[ $$OUT =~ (\"State\": \"([A-Z]+)\") ]]; \
 	echo $${BASH_REMATCH[2]}; \
 	case $${BASH_REMATCH[2]} in \
@@ -111,7 +119,7 @@ wait:
 	done
 
 terminate-cluster:
-	aws emr terminate-clusters --cluster-ids ${CID}
+	aws emr terminate-clusters --cluster-ids ${CLUSTER_ID}
 	rm -f cluster-id.txt
 	rm -f last-step-id.txt
 
@@ -119,10 +127,10 @@ clean:
 	./sbt clean -no-colors
 
 proxy:
-	aws emr socks --cluster-id ${CID} --key-pair-file "${HOME}/${EC2_KEY}.pem"
+	aws emr socks --cluster-id ${CLUSTER_ID} --key-pair-file "${HOME}/${EC2_KEY}.pem"
 
 ssh:
-	aws emr ssh --cluster-id ${CID} --key-pair-file "${HOME}/${EC2_KEY}.pem"
+	aws emr ssh --cluster-id ${CLUSTER_ID} --key-pair-file "${HOME}/${EC2_KEY}.pem"
 
 local-ingest: CATALOG=catalog
 local-ingest: LIMIT=1
@@ -169,4 +177,7 @@ update-route53:
 --hosted-zone-id ${HOSTED_ZONE} \
 --change-batch "file://$(CURDIR)/scripts/upsert.json"
 
-.PHONY: local-ingest local-tile-server update-route53
+test:
+	echo ${CLUSTER_ID}
+
+.PHONY: local-ingest local-tile-server update-route53 test
