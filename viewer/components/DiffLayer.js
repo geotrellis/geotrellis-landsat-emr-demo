@@ -22,7 +22,7 @@ var MapViews = React.createClass({
   getInitialState: function () {
     return {
       layerId: 0,
-      operation: "ndwi",
+      operation: "ndvi",
       timeId1: 1,
       timeId2: 0,
       times: {}
@@ -101,9 +101,8 @@ var MapViews = React.createClass({
             onChange={e => this.updateState("timeId2", +e.target.value)}>
           {layerTimes}
         </Input>
-
-        <Input type="select" label="Operation" placeholder="select"
-            value={isLandsat ? this.state.bandOp : "none"}
+        <Input type="select" label="Operation" placeholder="select" defaultValue="ndvi"
+            value={isLandsat ? this.state.bandOp : "ndvi"}
             onChange={e => this.updateState("operation", e.target.value)}>
           { isLandsat ? <option value="ndvi">NDVI</option> : null }
           { isLandsat ? <option value="ndwi">NDWI</option> : null }
