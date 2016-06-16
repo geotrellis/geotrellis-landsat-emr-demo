@@ -16,8 +16,9 @@ var App = React.createClass({
     <div className="row">
         <div className="col-md-9">
           <Leaflet
-            t1={this.props.t1}
-            t2={this.props.t2}
+            diffLayers={this.props.diffLayers}
+            ndi={this.props.ndi}
+            times={this.props.times[this.props.layerName]}
             layerName={this.props.layerName}
             rootUrl={this.props.rootUrl}
             layers={this.props.catalog.layers}
@@ -39,6 +40,7 @@ var App = React.createClass({
               bounds={this.props.map.bounds}
               onSubmit={url => this.props.actions.fetchCatalog(url)} />
             <Panels
+              ndi={this.props.ndi}
               rootUrl={this.props.rootUrl}
               layers={this.props.catalog.layers}
               activeLayerId={this.props.map.activeLayerId}
@@ -52,7 +54,9 @@ var App = React.createClass({
               showStateAverage={this.props.actions.showStateAverage}
               showStateDiffAverage={this.props.actions.showStateDiffAverage}
               setLayerName={this.props.actions.setLayerName}
-              setTime={this.props.actions.setTime}
+              registerTime={this.props.actions.registerTime}
+              setIndexType={this.props.actions.setIndexType}
+              setLayerType={this.props.actions.setLayerType}
             />
           </div>
         </div>

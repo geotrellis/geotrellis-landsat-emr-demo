@@ -28,27 +28,24 @@ var SingleLayer = React.createClass({
     };
   },
   handleTimeSelect: function(ev) {
-    console.log("STATE", this.state)
     this.updateState("timeId", +ev.target.value);
-    console.log(this.props.layers[this.state.layerId], this.state.timeId);
-    this.props.setTime(_.get(this.props.layers[this.state.layerId], "times", [])[this.state.timeId], 1);
+    this.props.registerTime(_.get(this.props.layers[this.state.layerId], "times", [])[this.state.timeId], 1);
   },
   handleLayerSelect: function(ev) {
     let layerId = +ev.target.value;
     let newState = _.merge({}, this.state, {
       "layerId": layerId,
       "time": _.get(this.state.times[layerId], "time", undefined),
-      "times": { // Saves time selectio when switching layer
+      "times": { // Saves time selection when switching layer
         [this.state.layerId]: {
           "time": this.state.time
         }
       }
     });
-    console.log("STATE", this.state)
 
     this.setState(newState);
     this.props.setLayerName(this.props.layers[layerId])
-    this.props.setTime(_.get(this.props.layers[layerId], "times", [])[this.state.timeId], 1)
+    this.props.registerTime(this.state.time, 0)
     this.updateMap(newState);
     this.props.showExtent(this.props.layers[layerId].extent);
   },
@@ -78,8 +75,8 @@ var SingleLayer = React.createClass({
     if ( _.isUndefined(this.state.layerId) && ! _.isEmpty(nextProps.layers)) {
       // we are blank and now is our chance to choose a layer and some times
       let newState = _.merge({}, this.state, { layerId: 0, timeId: 0 });
+      let layer = nextProps.layers[0];
       this.setState(newState);
-      var layer = nextProps.layers[0];
       updateSingleLayerMap(nextProps.showLayerWithBreaks,
                            nextProps.showLayer,
                            nextProps.rootUrl,
@@ -89,11 +86,7 @@ var SingleLayer = React.createClass({
     }
   },
   componentWillMount: function() {
-    let layer = this.props.layers[this.state.layerId];
-    let time = this.state.times[this.state.layerId];
-
-    this.props.setLayerName(layer)
-    this.props.setTime(time, 1)
+    this.props.setLayerType('singleLayer')
   },
   render: function() {
     let layer       = this.props.layers[this.state.layerId];
@@ -101,12 +94,12 @@ var SingleLayer = React.createClass({
 
     let layerOptions =
       _.map(this.props.layers, (layer, index) => {
-        return <option value={index} key={index}>{layer.name}</option>;
+        return <option value={layer.name} key={index}>{layer.name}</option>;
       });
 
     let layerTimes =
       _.map(_.get(layer, "times", []), (time, index) => {
-        return <option value={index} key={index}>{time}</option>;
+        return <option value={time} key={index}>{time}</option>;
       });
 
 
@@ -118,7 +111,7 @@ var SingleLayer = React.createClass({
         </Input>
 
         <Input type="select" label="Time" placeholder="select" value={this.state.timeId}
-            onChange={e => this.handleTimeSelect(e)}>//this.updateState("timeId", +e.target.value)}>
+            onChange={e => this.handleTimeSelect(e)}>//this.updateState("timeId", +e.target.key)}>
           {layerTimes}
         </Input>
 

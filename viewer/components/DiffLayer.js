@@ -28,6 +28,10 @@ var MapViews = React.createClass({
       times: {}
     };
   },
+  handleTimeSelect: function(ev, index) {
+    this.updateState("timeId" + index, +ev.target.value);
+    this.props.registerTime(_.get(this.props.layers[this.state.layerId], "times", [])[this.state.timeId], 1);
+  },
   handleLayerSelect: function(ev) {
     let layerId = +ev.target.value;
     let newState = _.merge({}, this.state, {
@@ -75,6 +79,9 @@ var MapViews = React.createClass({
       nextProps.showExtent(layer.extent);
     }
   },
+  componentWillMount: function() {
+    this.props.setLayerType('intraLayerDiff')
+  },
   render: function() {
     let layer       = this.props.layers[this.state.layerId];
     let isLandsat   = _.get(layer, "isLandsat", false);
@@ -98,12 +105,12 @@ var MapViews = React.createClass({
         </Input>
 
         <Input type="select" label="Time A" placeholder="select" value={this.state.timeId1}
-            onChange={e => this.updateState("timeId1", +e.target.value)}>
+            onChange={e => this.handleTimeSelect(+e.target.value, 1)}>
           {layerTimes}
         </Input>
 
         <Input type="select" label="Time B" placeholder="select" value={this.state.timeId2}
-            onChange={e => this.updateState("timeId2", +e.target.value)}>
+            onChange={e => this.handleTimeSelect(+e.target.value, 2)}>
           {layerTimes}
         </Input>
 

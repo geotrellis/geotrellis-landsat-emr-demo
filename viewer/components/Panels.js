@@ -15,6 +15,9 @@ var Panels = React.createClass({
       autoZoom: true
     };
   },
+  handleNDI: function(ndi) {
+    this.props.setIndexType(ndi);
+  },
   handleAutoZoom: function(e) {
     let v = e.target.checked || false;
     this.setState(_.merge({}, this.state, {autoZoom: v}));
@@ -96,9 +99,14 @@ var Panels = React.createClass({
   render: function() {
     let nonLandsatLayers = _.filter(this.props.layers, l => {return ! l.isLandsat});
     let showNEXLayers = nonLandsatLayers.length > 0;
+    console.log(this.props.ndi);
     return (
     <div>
       <Input type="checkbox" label="Snap to layer extent" checked={this.state.autoZoom} onChange={this.handleAutoZoom} />
+      <ButtonGroup>
+        <Button active={this.props.ndi == 'ndvi'} onClick={() => this.props.setIndexType('ndvi')}>NDVI</Button>
+        <Button active={this.props.ndi == 'ndwi'} onClick={() => this.props.setIndexType('ndwi')}>NDWI</Button>
+      </ButtonGroup>
       <PanelGroup defaultActiveKey="1" accordion={true} onSelect={this.handlePaneSelect}>
         <Panel header="Single Layer" eventKey="1" id={1}>
           <SingleLayer
@@ -110,7 +118,8 @@ var Panels = React.createClass({
             showLayerWithBreaks={this.showLayerWithBreaks(1)}
             showExtent={this.showExtent(1)}
             setLayerName={this.props.setLayerName}
-            setTime={this.props.setTime}
+            registerTime={this.props.registerTime}
+            setLayerType={this.props.setLayerType}
           />
         </Panel>
 
@@ -121,7 +130,9 @@ var Panels = React.createClass({
             layers={this.props.layers}
             showLayer={this.showLayer(2)}
             showLayerWithBreaks={this.showLayerWithBreaks(2)}
-            showExtent={this.showExtent(2)} />
+            showExtent={this.showExtent(2)}
+            setLayerType={this.props.setLayerType}
+          />
         </Panel>
 
         { showNEXLayers ?

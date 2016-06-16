@@ -3,17 +3,17 @@ import shortid from 'shortid';
 import timeSeries from '../charts/timeSeries.js'
 
 var actions = {
-  setTime: function(time, whichTime) {
-    console.log(time, whichTime, 'zzzzz');
-    var actionType;
-    if (whichTime == 1) {
-      actionType = 'SET_T1';
-    } else if (whichTime == 2) {
-      actionType = 'SET_T2';
-    }
+  setLayerType: function(layerType) {
     return {
-      type: actionType,
-      time: time
+      type: 'SET_LAYER_TYPE',
+      layerType: layerType
+    };
+  },
+  registerTime: function(time, index) {
+    return {
+      type: 'REGISTER_TIME',
+      time: time,
+      index: index
     };
   },
   setIndexType: function(ndi) {
@@ -22,12 +22,11 @@ var actions = {
       ndi: ndi
     };
   },
-  setLayerName: function(layer) {
-    var name;
-    if (layer) { name = layer.name; }
+  setLayerName: function(layerName) {
+    console.log("lname", layerName);
     return {
       type: 'SET_LAYERNAME',
-      name: name
+      name: layerName
     };
   },
   showLayer: function (url) {
@@ -83,22 +82,21 @@ var actions = {
       error => dispatch(actions.loadCatalogFailure(url, error)));
     };
   },
-  fetchPolygonalSummary: function(polygonLayer, url) {
+  fetchPolygonalSummary: function(polygonLayer, url, indexType) {
     // type should be NDVI or NDWI
     // answer should be the computed mean value
     let singlePolySummaryTemplate = _.template("Average <%- type %>: <%- answer %>");
 
     return dispatch => {
       console.log("Fetching polygonal summary", polygonLayer.toGeoJSON());
-      window.p = polygonLayer;
-      return fetch("/", {
-        method: 'POST'
+      return fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(polygonLayer.toGeoJSON().geometry)
       }).then( response => {
-        var dummy = { "answer": -0.2394847059657793 };
-        dummy.type = "NDVI";
-        polygonLayer.bindPopup(singlePolySummaryTemplate(dummy));
-        //response.json().then( summary => {
-        //});
+        response.json().then( summary => {
+          summary.type = indexType;
+          polygonLayer.bindPopup(singlePolySummaryTemplate(summary));
+        });
       },
       error => {
       });
@@ -108,21 +106,19 @@ var actions = {
     return dispatch => {
       console.log("Fetching timeseries data", pointLayer.toGeoJSON());
       var chartID = shortid.generate();
-      return fetch("/").then( response => {
-        var dummy = { "answer": [["2015-06-29T04:00:00.000Z", -0.23400004343388278], ["2015-06-20T04:00:00.000Z", -0.054853387259858444]] };
-        var data = _.map(dummy.answer, function(d) { console.log("a d", d);return { "date": new Date(d[0]), "value": d[1] }; });
-        pointLayer.on("click", function() {
-          pointLayer.bindPopup('<div id="' + chartID + '" style="width: 400px; height: 200px;"><svg/></div>',
-                               { 'maxWidth': 450 });
-          pointLayer.openPopup();
-          timeSeries(chartID, data);
+      return fetch(url).then( response => {
+        response.json().then( summary => {
+          var data = _.map(summary.answer, function(d) { return { "date": new Date(d[0]), "value": d[1] }; });
+          pointLayer.on("click", function() {
+            pointLayer.bindPopup('<div id="' + chartID + '" style="width: 400px; height: 200px;"><svg/></div>',
+                                 { 'maxWidth': 450 });
+            pointLayer.openPopup();
+            timeSeries(chartID, data);
 
-          // Evidently unbinding is necessary for the graph to be rerendered properly
-          pointLayer.unbindPopup();
+            // Evidently unbinding is necessary for the graph to be rerendered properly
+            pointLayer.unbindPopup();
+          });
         });
-
-        //response.json().then( summary => {
-        //});
       },
       error => {
       });

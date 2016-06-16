@@ -12,20 +12,29 @@ var Leaflet = React.createClass({
   _onDraw: function(geom) {
     let root = this.props.rootUrl;
     let zoom = geom.layer._map._zoom;
-    let t1 = this.props.times[0];
-    let t2 = this.props.times[1];
-    let layerName = this.props.layers[this.props.activeLayerId];
+    let t0 = this.props.times[0];
+    let t1 = this.props.times[1];
+    let layerName = this.props.layerName;
     let ndi = this.props.ndi;
+    console.log('leafletProps', root, zoom, t0, t1, layerName, ndi);
+
 
     if (geom.layerType == 'marker') { // For point timeseries
-      this.props.fetchTimeSeries(geom.layer);
+      var latlng = geom.layer._latlng;
+      var url = `${root}/series/${layerName}/${zoom}/${ndi}?lng=${latlng.lng}&lat=${latlng.lat}`;
+      this.props.fetchTimeSeries(geom.layer, url);
     } else { // For polygonal summary (mean)
-      this.props.fetchPolygonalSummary(geom.layer);
+      if (this.props.layerType == 'singleLayer') {
+        var url = `${root}/mean/${layerName}/${zoom}/${ndi}?time=${t0}`;
+        this.props.fetchPolygonalSummary(geom.layer, url, ndi);
+      } else {
+        var url = `${root}/mean/${layerName}/${zoom}/${ndi}?time=${t0}&otherTime=${t1}`;
+        this.props.fetchPolygonalSummary(geom.layer, url, ndi + ' difference');
+      }
     }
   },
 
   render: function() {
-    console.log(this.props);
     const style = {
       minHeight: "800px", width: "100%"
     };
