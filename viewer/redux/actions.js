@@ -23,7 +23,6 @@ var actions = {
     };
   },
   setLayerName: function(layerName) {
-    console.log("lname", layerName);
     return {
       type: 'SET_LAYERNAME',
       name: layerName

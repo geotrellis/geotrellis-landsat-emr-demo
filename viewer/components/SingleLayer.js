@@ -85,9 +85,6 @@ var SingleLayer = React.createClass({
       nextProps.showExtent(layer.extent);
     }
   },
-  componentWillMount: function() {
-    this.props.setLayerType('singleLayer')
-  },
   render: function() {
     let layer       = this.props.layers[this.state.layerId];
     let isLandsat   = _.get(layer, "isLandsat", false);

@@ -16,7 +16,6 @@ var Leaflet = React.createClass({
     let t1 = this.props.times[1];
     let layerName = this.props.layerName;
     let ndi = this.props.ndi;
-    console.log('leafletProps', root, zoom, t0, t1, layerName, ndi);
 
 
     if (geom.layerType == 'marker') { // For point timeseries

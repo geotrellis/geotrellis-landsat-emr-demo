@@ -27,6 +27,11 @@ var Panels = React.createClass({
     console.log("PANE SELECT %s", id);
     let newState = _.merge({}, this.state, { activePane: +id });
     this.setState(newState);
+    if (id == 1) {
+      this.props.setLayerType('singleLayer');
+    } else if (id == 2) {
+      this.props.setLayerType('intraLayerDiff');
+    }
   },
   updateState: function(target, value) {
     let newState = _merge({}, this.state, {[target]: value});
@@ -99,7 +104,6 @@ var Panels = React.createClass({
   render: function() {
     let nonLandsatLayers = _.filter(this.props.layers, l => {return ! l.isLandsat});
     let showNEXLayers = nonLandsatLayers.length > 0;
-    console.log(this.props.ndi);
     return (
     <div>
       <Input type="checkbox" label="Snap to layer extent" checked={this.state.autoZoom} onChange={this.handleAutoZoom} />
@@ -119,7 +123,6 @@ var Panels = React.createClass({
             showExtent={this.showExtent(1)}
             setLayerName={this.props.setLayerName}
             registerTime={this.props.registerTime}
-            setLayerType={this.props.setLayerType}
           />
         </Panel>
 
@@ -131,7 +134,6 @@ var Panels = React.createClass({
             showLayer={this.showLayer(2)}
             showLayerWithBreaks={this.showLayerWithBreaks(2)}
             showExtent={this.showExtent(2)}
-            setLayerType={this.props.setLayerType}
           />
         </Panel>
 

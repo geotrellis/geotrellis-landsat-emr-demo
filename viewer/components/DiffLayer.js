@@ -52,7 +52,6 @@ var MapViews = React.createClass({
   },
   updateState: function(target, value) {
     let newState = _.merge({}, this.state, {[target]: value});
-    console.log("UPDATE STATE, NEW ", newState);
     this.setState(newState);
     this.updateMap(newState);
   },
@@ -78,9 +77,6 @@ var MapViews = React.createClass({
       updateIntraLayerDiffMap(nextProps.showLayerWithBreaks, this.props.showLayer, nextProps.rootUrl, this.state.operation, layer, 0, 1);
       nextProps.showExtent(layer.extent);
     }
-  },
-  componentWillMount: function() {
-    this.props.setLayerType('intraLayerDiff')
   },
   render: function() {
     let layer       = this.props.layers[this.state.layerId];

@@ -16,7 +16,7 @@ var App = React.createClass({
     <div className="row">
         <div className="col-md-9">
           <Leaflet
-            diffLayers={this.props.diffLayers}
+            layerType={this.props.layerType}
             ndi={this.props.ndi}
             times={this.props.times[this.props.layerName]}
             layerName={this.props.layerName}
