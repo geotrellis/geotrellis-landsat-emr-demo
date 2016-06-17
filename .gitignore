@@ -1,9 +1,12 @@
 
-
 project/boot
 project/plugins/project
 project/plugins/target
 project/target
+viewer/dist
+viewer/site.tgz
+cluster-id.txt
+last-step-id.txt
 target
 .ensime
 \#*#
@@ -28,3 +31,8 @@ _SUCCESS
 *.swo
 *.sublime-*
 .vagrant
+.ensime
+.ensime_cache
+tags
+catalog
+scripts/upsert.json

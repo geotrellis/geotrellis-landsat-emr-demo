@@ -1,169 +1,168 @@
 package demo
 
+import com.github.nscala_time.time.Imports._
+import geotrellis.vector._
+import geotrellis.vector.io._
 import geotrellis.raster._
-import geotrellis.raster.reproject._
+import geotrellis.raster.split._
+import geotrellis.raster.io.geotiff.reader._
 import geotrellis.raster.resample._
-import geotrellis.raster.io.geotiff._
 import geotrellis.spark._
-import geotrellis.spark.ingest._
-import geotrellis.spark.tiling._
-import geotrellis.spark.io.file._
+import geotrellis.spark.io._
 import geotrellis.spark.io.index._
-import geotrellis.spark.io.avro.codecs._
-import geotrellis.spark.io.json._
+import geotrellis.spark.io.s3._
+import geotrellis.spark.io.file._
+import geotrellis.spark.io.accumulo._
+import geotrellis.spark.util._
+import geotrellis.spark.tiling._
+import geotrellis.spark.pyramid._
 import geotrellis.proj4._
+import geotrellis.spark.ingest._
+import com.azavea.landsatutil.{S3Client => lsS3Client, _}
 
-import org.apache.commons.io.filefilter._
-
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 import org.apache.spark._
 import org.apache.spark.rdd._
-import spray.json.DefaultJsonProtocol._
+import org.apache.accumulo.core.client.security.tokens._
 
-import com.github.nscala_time.time.Imports._
-import org.joda.time.Days
-
+import scala.util.Try
+import java.net._
 import java.io._
+import org.apache.commons.io.IOUtils
 
-object LandsatIngest {
-  val catalogPath = "/Volumes/Transcend/data/workshop/jan2016/data/landsat-catalog"
+object LandsatIngest extends Logging {
+
+  /** Calculate the layer metadata for the incoming landsat images
+    *
+    * Normally we would have no information about the incoming rasters and we be forced
+    * to use [[TileLayerMetadata.fromRdd]] to collect it before we could tile the imagery.
+    * But in this case the pre-query from scala-landsatutil is providing enough
+    * information that the metadata can be calculated.
+    *
+    * Collecting metadata before tiling step requires either reading the data twice
+    * or caching records in spark memory. In either case avoiding collection is a performance boost.
+    */
+
+  def calculateTileLayerMetadata(maxZoom: Int, destCRS: CRS, images: Seq[LandsatImage]) = {
+    val layoutDefinition = ZoomedLayoutScheme.layoutForZoom(maxZoom, destCRS.worldExtent, 256)
+    val imageExtent = images.map(_.footprint.envelope).reduce(_ combine _).reproject(LatLng, destCRS)
+    val dateMin = images.map(_.aquisitionDate).min
+    val dateMax = images.map(_.aquisitionDate).max
+    val GridBounds(colMin, rowMin, colMax, rowMax) = layoutDefinition.mapTransform(imageExtent)
+    TileLayerMetadata(
+      cellType = UShortCellType,
+      layout = layoutDefinition,
+      extent = imageExtent,
+      crs = destCRS,
+      bounds = KeyBounds(
+        SpaceTimeKey(colMin, rowMin, dateMin),
+        SpaceTimeKey(colMax, rowMax, dateMax))
+    )
+  }
+
+  /** Transforms a collection of Landsat image descriptions into RDD of MultibandTiles.
+    * Each landsat scene is downloaded, reprojected and then split into 256x256 chunks.
+    * Chunking the scene allows for greater parallism and reduces memory pressure
+    * produces by processing each partition.
+    */
+  def fetch(
+    images: Seq[LandsatImage],
+    source: LandsatImage => Option[ProjectedRaster[MultibandTile]]
+  )(implicit sc: SparkContext): RDD[(TemporalProjectedExtent, MultibandTile)] = {
+    sc.parallelize(images, images.length) // each image gets its own partition
+      .mapPartitions({ iter =>
+        for {
+          img <- iter
+          ProjectedRaster(raster, crs) <- source(img).toList
+          reprojected = raster.reproject(crs, WebMercator) // reprojection before chunking avoids NoData artifacts
+          layoutCols = math.ceil(reprojected.cols.toDouble / 256).toInt
+          layoutRows = math.ceil(reprojected.rows.toDouble / 256).toInt
+          chunk <- reprojected.split(TileLayout(layoutCols, layoutRows, 256, 256), Split.Options(cropped = false, extend = false))
+        } yield {
+          TemporalProjectedExtent(chunk.extent, WebMercator, img.aquisitionDate) -> chunk.tile
+        }
+      }, preservesPartitioning = true)
+      .repartition(images.length * 16) // Break up each scene into 16 partitions
+  }
+
+  /** Accept a list of landsat image descriptors we will ingest into a geotrellis layer.
+    * It is expected that the user will generate this list using `Landsat8Query` and prefilter.
+    */
+  def run(
+    layerName: String,
+    images: Seq[LandsatImage],
+    fetchMethod: LandsatImage => Option[ProjectedRaster[MultibandTile]],
+    writer: LayerWriter[LayerId]
+  )(implicit sc: SparkContext): Unit = {
+    // Our dataset can span UTM zones, we must reproject the tiles individually to common projection
+    val maxZoom = 13 // We know this ahead of time based on Landsat resolution
+    val destCRS = WebMercator
+    val resampleMethod = Bilinear
+    val layoutScheme = ZoomedLayoutScheme(destCRS, 256)
+    val reprojected = fetch(images, fetchMethod)
+    val tileLayerMetadata = calculateTileLayerMetadata(maxZoom, destCRS, images)
+    logger.info("sTileLayerMetadata calculated: $tileLayerMetadata")
+    val tiledRdd = reprojected.tileToLayout(tileLayerMetadata, resampleMethod)
+    val rdd = new ContextRDD(tiledRdd, tileLayerMetadata)
+
+    Pyramid.upLevels(rdd, layoutScheme, maxZoom, 1, resampleMethod){ (rdd, zoom) =>
+      writer.write(LayerId(layerName, zoom), rdd, ZCurveKeyIndexMethod.byDay)
+
+      if (zoom == 1) {
+        // Store attributes common across zooms for catalog to see
+        val id = LayerId(layerName, 0)
+        writer.attributeStore.write(id, "times",
+          rdd
+            .map(_._1.instant)
+            .countByValue
+            .keys.toArray
+            .sorted)
+        writer.attributeStore.write(id, "extent",
+          (rdd.metadata.extent, rdd.metadata.crs))
+      }
+    }
+  }
+}
+
+object LandsatIngestMain extends Logging {
 
   def main(args: Array[String]): Unit = {
-    // Setup Spark to use Kryo serializer.
-    val conf =
-      new SparkConf()
-        .setIfMissing("spark.master", "local[4]")
-        .setAppName("Landsat Ingest")
-        .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-        .set("spark.kryo.registrator", "geotrellis.spark.io.hadoop.KryoRegistrator")
+    logger.info(s"Arguments: ${args.toSeq}")
+    val config = Config.parse(args)
+    logger.info(s"Config: $config")
 
-    implicit val sc = new SparkContext(conf)
+    implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
+    val images = Landsat8Query()
+      .withStartDate(config.startDate.toDateTimeAtStartOfDay)
+      .withEndDate(config.endDate.toDateTimeAtStartOfDay)
+      .withMaxCloudCoverage(config.maxCloudCoverage)
+      .intersects(config.bbox)
+      .collect()
 
-    // Manually set bands
-    val bands =
-      Array[String](
-        // Red, Green, Blue
-        "4", "3", "2",
-        // Near IR
-        "5",
-        // SWIR 1
-        "6",
-        // SWIR 2
-        "7",
-        "QA"
-      )
+    logger.info(s"Found ${images.length} landsat images")
 
-    // Manually set the image directories
+    val bandsWanted = Array(
+      // Red, Green, Blue
+      "4", "3", "2",
+      // Near IR
+      "5",
+      "QA")
 
-    val phillyImages =
-      Array[String](
-        "/Volumes/Transcend/data/workshop/jan2016/data/philly/LC80140322013152LGN00",
-        "/Volumes/Transcend/data/workshop/jan2016/data/philly/LC80140322014139LGN00"
-      )
-
-    val sfImages =
-      Array[String](
-        "/Volumes/Transcend/data/workshop/jan2016/data/drought/LC80440342013170LGN00",
-        "/Volumes/Transcend/data/workshop/jan2016/data/drought/LC80440342015176LGN00"
-      )
-
-    val vfImages =
-      Array[String](
-        "/Volumes/Transcend/data/workshop/jan2016/data/valleyfire/LC80450332015247LGN00",
-        "/Volumes/Transcend/data/workshop/jan2016/data/valleyfire/LC80450332015263LGN00"
-      )
-
-    val batesvilleImages =
-      Array[String](
-        "/Volumes/Transcend/data/workshop/jan2016/data/flooding/batesville/LC80240352015292LGN00",
-        "/Volumes/Transcend/data/workshop/jan2016/data/flooding/batesville/LC80240352015324LGN00"
-      )
 
     try {
-      run("Philly-landsat", phillyImages, bands)
-      run("Batesville-landsat", batesvilleImages, bands)
-      run("SanFrancisco-landsat", sfImages, bands)
-      run("ValleyFire-landsat", vfImages, bands)
-
-      // Pause to wait to close the spark context,
-      // so that you can check out the UI at http://localhost:4040
-      println("Hit enter to exit.")
-      readLine()
+      /* TODO if the layer exists the ingest will fail, we need to use layer updater*/
+      LandsatIngest.run(
+        layerName = config.layerName,
+        images = config.limit.fold(images)(images.take(_)),
+        fetchMethod = { img =>
+          Try { img.getRasterFromS3(bandsWanted = bandsWanted, hook = config.cacheHook) }
+            .recover{ case err => img.getFromGoogle(bandsWanted = bandsWanted, hook = config.cacheHook).raster }
+            .toOption
+        },
+        writer = config.writer)
     } finally {
       sc.stop()
     }
-  }
-
-  def fullPath(path: String) = new java.io.File(path).getAbsolutePath
-
-  def findMTLFile(imagePath: String): String =
-    new File(imagePath).listFiles(new WildcardFileFilter(s"*_MTL.txt"): FileFilter).toList match {
-      case Nil => sys.error(s"MTL data not found for image at ${imagePath}")
-      case List(f) => f.getAbsolutePath
-      case _ => sys.error(s"Multiple files matching band MLT file found for image at ${imagePath}")
-    }
-
-  def findBandTiff(imagePath: String, band: String): String =
-    new File(imagePath).listFiles(new WildcardFileFilter(s"*_B${band}.TIF"): FileFilter).toList match {
-      case Nil => sys.error(s"Band ${band} not found for image at ${imagePath}")
-      case List(f) => f.getAbsolutePath
-      case _ => sys.error(s"Multiple files matching band ${band} found for image at ${imagePath}")
-    }
-
-  def readBands(imagePath: String, bands: Array[String]): (MTL, MultiBandGeoTiff) = {
-    // Read time out of the metadata MTL file.
-    val mtl = MTL(findMTLFile(imagePath))
-
-    val bandTiffs =
-      bands
-        .map { band =>
-          SingleBandGeoTiff(findBandTiff(imagePath, band))
-        }
-
-    (mtl, MultiBandGeoTiff(ArrayMultiBandTile(bandTiffs.map(_.tile)), bandTiffs.head.extent, bandTiffs.head.crs))
-  }
-
-  def run(layerName: String, images: Array[String], bands: Array[String])(implicit sc: SparkContext): Unit = {
-    val targetLayoutScheme = ZoomedLayoutScheme(WebMercator, 256)
-    // Create tiled RDDs for each
-    val tileSets =
-      images.foldLeft(Seq[(Int, MultiBandRasterRDD[SpaceTimeKey])]()) { (acc, image) =>
-        val (mtl, geoTiff) = readBands(image, bands)
-        val ingestElement = (SpaceTimeInputKey(geoTiff.extent, geoTiff.crs, mtl.dateTime), geoTiff.tile)
-        val sourceTile = sc.parallelize(Seq(ingestElement))
-        val (_, metadata) =
-          RasterMetaData.fromRdd(sourceTile, FloatingLayoutScheme(512))
-
-        val tiled =
-          sourceTile
-            .tileToLayout[SpaceTimeKey](metadata, Tiler.Options(resampleMethod = NearestNeighbor, partitioner = new HashPartitioner(100)))
-
-        val rdd = MultiBandRasterRDD(tiled, metadata)
-
-        // Reproject to WebMercator
-        acc :+ rdd.reproject(targetLayoutScheme, bufferSize = 30, Reproject.Options(method = Bilinear, errorThreshold = 0))
-      }
-
-    val zoom = tileSets.head._1
-    val headRdd = tileSets.head._2
-    val rdd = ContextRDD(
-      sc.union(tileSets.map(_._2)),
-      RasterMetaData(
-        headRdd.metadata.cellType,
-        headRdd.metadata.layout,
-        tileSets.map { case (_, rdd) => (rdd.metadata.extent) }.reduce(_.combine(_)),
-        headRdd.metadata.crs
-      )
-    )
-
-    // Write to the catalog
-    val attributeStore = FileAttributeStore(catalogPath)
-    val writer = FileLayerWriter[SpaceTimeKey, MultiBandTile, RasterMetaData](attributeStore, ZCurveKeyIndexMethod.byMillisecondResolution(1000L * 60 * 60 * 24))
-
-    val lastRdd =
-      Pyramid.upLevels(rdd, targetLayoutScheme, zoom, Bilinear) { (rdd, zoom) =>
-        writer.write(LayerId(layerName, zoom), rdd)
-      }
-
-    attributeStore.write(LayerId(layerName, 0), "times", lastRdd.map(_._1.instant).collect.toArray)
   }
 }

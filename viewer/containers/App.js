@@ -16,12 +16,21 @@ var App = React.createClass({
     <div className="row">
         <div className="col-md-9">
           <Leaflet
+            layerType={this.props.layerType}
+            ndi={this.props.ndi}
+            times={this.props.times[this.props.layerName]}
+            layerName={this.props.layerName}
+            rootUrl={this.props.rootUrl}
+            layers={this.props.catalog.layers}
+            activeLayerId={this.props.map.activeLayerId}
             url={this.props.map.url}
             bounds={this.props.map.bounds}
             maxState={this.props.map.maxState}
             maxAverageState={this.props.map.maxAverageState}
             stateAverage={this.props.map.stateAverage}
-            stateDiffAverage={this.props.map.stateDiffAverage} />
+            stateDiffAverage={this.props.map.stateDiffAverage}
+            fetchPolygonalSummary={this.props.actions.fetchPolygonalSummary}
+            fetchTimeSeries={this.props.actions.fetchTimeSeries} />
         </div>
 
         <div className="col-md-3" >
@@ -31,6 +40,7 @@ var App = React.createClass({
               bounds={this.props.map.bounds}
               onSubmit={url => this.props.actions.fetchCatalog(url)} />
             <Panels
+              ndi={this.props.ndi}
               rootUrl={this.props.rootUrl}
               layers={this.props.catalog.layers}
               activeLayerId={this.props.map.activeLayerId}
@@ -42,7 +52,12 @@ var App = React.createClass({
               showMaxAverageState={this.props.actions.showMaxAverageState}
               hideMaxAverageState={this.props.actions.hideMaxAverageState}
               showStateAverage={this.props.actions.showStateAverage}
-              showStateDiffAverage={this.props.actions.showStateDiffAverage} />
+              showStateDiffAverage={this.props.actions.showStateDiffAverage}
+              setLayerName={this.props.actions.setLayerName}
+              registerTime={this.props.actions.registerTime}
+              setIndexType={this.props.actions.setIndexType}
+              setLayerType={this.props.actions.setLayerType}
+            />
           </div>
         </div>
       </div>

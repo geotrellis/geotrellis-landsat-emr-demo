@@ -1,8 +1,8 @@
 package demo
 
 import geotrellis.vector._
+import geotrellis.vector.io._
 import geotrellis.vector.io.json._
-
 import spray.json._
 import spray.json.DefaultJsonProtocol._
 

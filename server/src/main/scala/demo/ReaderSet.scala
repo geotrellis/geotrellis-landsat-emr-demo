@@ -16,15 +16,14 @@ import scala.reflect._
 
 trait ReaderSet {
   val layoutScheme = ZoomedLayoutScheme(WebMercator, 256)
-
+  def attributeStore: AttributeStore
   def metadataReader: MetadataReader
-  def singleBandLayerReader: FilteringLayerReader[LayerId, SpaceTimeKey, RasterMetaData, RasterRDD[SpaceTimeKey]]
+  def layerReader: FilteringLayerReader[LayerId]
   def singleBandTileReader: TileReader[SpaceTimeKey, Tile]
-  def multiBandLayerReader: FilteringLayerReader[LayerId, SpaceTimeKey, RasterMetaData, MultiBandRasterRDD[SpaceTimeKey]]
-  def multiBandTileReader: TileReader[SpaceTimeKey, MultiBandTile]
+  def multiBandTileReader: TileReader[SpaceTimeKey, MultibandTile]
 
   /** Do "overzooming", where we resample lower zoom level tiles to serve out higher zoom level tiles. */
-  def readSingleBandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[Tile] =
+  def readSinglebandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[Tile] =
     try {
       val z = metadataReader.layerNamesToMaxZooms(layer)
 
@@ -54,7 +53,7 @@ trait ReaderSet {
     }
 
   /** Do "overzooming", where we resample lower zoom level tiles to serve out higher zoom level tiles. */
-  def readMultiBandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[MultiBandTile] =
+  def readMultibandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[MultibandTile] =
     try {
       val z = metadataReader.layerNamesToMaxZooms(layer)
 
