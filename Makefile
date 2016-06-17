@@ -1,20 +1,18 @@
-export AWS_DEFAULT_REGION := us-east-1
-export S3_URI := s3://geotrellis-test/emr
-export EC2_KEY := geotrellis-cluster
-export SUBNET_ID := subnet-c5fefdb1
+include config-aws.mk
+
 export NAME := Landsat Demo
 export MASTER_INSTANCE:=m3.xlarge
 export MASTER_PRICE := 0.5
-export MASTER_MEMORY := 10G
+export MASTER_MEMORY := 9500M
 export WORKER_INSTANCE:=m3.2xlarge
-export WORKER_COUNT := 5
+export WORKER_COUNT := 2
 export WORKER_PRICE := 0.5
-export EXECUTOR_MEMORY := 9500M
-export EXECUTOR_CORES := 4
+export EXECUTOR_MEMORY := 4400M
+export EXECUTOR_CORES := 2
 export YARN_OVERHEAD := 700
 export USE_SPOT:=true
 
-# Japan typhoon
+# Query parameters
 export LAYER_NAME := japan-typhoon
 export START_DATE := 2015-07-01
 export END_DATE := 2015-11-30
@@ -39,6 +37,9 @@ CLUSTER_ID=$(shell if [ -e "cluster-id.txt" ]; then cat cluster-id.txt; fi)
 endif
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
+
+test:
+	echo hello
 
 ${SERVER_ASSEMBLY}: $(call rwildcard, server/src, *.scala) server/build.sbt
 	./sbt "project server" assembly -no-colors
@@ -169,10 +170,8 @@ define UPSERT_BODY
 }
 endef
 
-update-route53: HOSTED_ZONE=ZIM2DOAEE0E8U
-update-route53: RECORD=geotrellis-ndvi.geotrellis.io
 update-route53: VALUE=$(shell aws emr describe-cluster --output text --cluster-id $(CLUSTER_ID) | egrep "^CLUSTER" | cut -f5)
-update-route53: export UPSERT=$(call UPSERT_BODY,${RECORD},${VALUE})
+update-route53: export UPSERT=$(call UPSERT_BODY,${ROUTE53_RECORD},${VALUE})
 update-route53:
 	@tee scripts/upsert.json <<< "$$UPSERT"
 	aws route53 change-resource-record-sets \
