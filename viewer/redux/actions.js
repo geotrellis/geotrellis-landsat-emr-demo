@@ -84,7 +84,7 @@ var actions = {
   fetchPolygonalSummary: function(polygonLayer, url, indexType) {
     // type should be NDVI or NDWI
     // answer should be the computed mean value
-    let singlePolySummaryTemplate = _.template("<h2>Average <%- type %>: <%- answer %></h2>");
+    let singlePolySummaryTemplate = _.template("<h4>Average <%- type %>: <%- answer %></h4>");
 
     return dispatch => {
       console.log("Fetching polygonal summary", polygonLayer.toGeoJSON().geometry);
@@ -98,9 +98,10 @@ var actions = {
         response.json().then( summary => {
           summary.type = indexType;
           if (_.isNull(summary.answer)) {
-            polygonLayer.bindPopup('<h2>No data in query range</h2>');
+            polygonLayer.bindPopup('<h4>No data in query range</h4>');
             polygonLayer.openPopup();
           } else {
+            summary.answer = summary.answer.toFixed(4)
             polygonLayer.bindPopup(singlePolySummaryTemplate(summary));
             polygonLayer.openPopup();
           }
