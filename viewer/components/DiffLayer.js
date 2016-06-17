@@ -28,6 +28,10 @@ var MapViews = React.createClass({
       times: {}
     };
   },
+  handleTimeSelect: function(ev, layer, index) {
+    this.updateState("timeId" + index, +ev.target.value);
+    this.props.registerTime(currentLayer.times[ev.target.value], index);
+  },
   handleLayerSelect: function(ev) {
     let layerId = +ev.target.value;
     let newState = _.merge({}, this.state, {
@@ -48,14 +52,18 @@ var MapViews = React.createClass({
   },
   updateState: function(target, value) {
     let newState = _.merge({}, this.state, {[target]: value});
-    console.log("UPDATE STATE, NEW ", newState);
     this.setState(newState);
     this.updateMap(newState);
   },
   updateMap: function (state) {
     if (! state) {state = this.state; }
-    ifAllDefined(this.props.showLayerWithBreaks, this.props.showLayer, this.props.rootUrl, state.operation, this.props.layers[state.layerId], state.timeId1, state.timeId2)
-      (updateIntraLayerDiffMap);
+    ifAllDefined(this.props.showLayerWithBreaks,
+                 this.props.showLayer,
+                 this.props.rootUrl,
+                 state.operation,
+                 this.props.layers[state.layerId],
+                 state.timeId1,
+                 state.timeId2)(updateIntraLayerDiffMap);
     this.props.showExtent(this.props.layers[state.layerId].extent);
   },
   componentWillReceiveProps: function (nextProps){
@@ -93,12 +101,12 @@ var MapViews = React.createClass({
         </Input>
 
         <Input type="select" label="Time A" placeholder="select" value={this.state.timeId1}
-            onChange={e => this.updateState("timeId1", +e.target.value)}>
+            onChange={ev => this.handleTimeSelect(ev, layer, 1)}>
           {layerTimes}
         </Input>
 
         <Input type="select" label="Time B" placeholder="select" value={this.state.timeId2}
-            onChange={e => this.updateState("timeId2", +e.target.value)}>
+            onChange={ev => this.handleTimeSelect(ev, layer, 2)}>
           {layerTimes}
         </Input>
         <Input type="select" label="Operation" placeholder="select" defaultValue="ndvi"
