@@ -1,10 +1,10 @@
 package demo
 
 import geotrellis.raster._
-import geotrellis.raster.mapalgebra.local._
 import geotrellis.raster.io.geotiff._
 import geotrellis.raster.render._
 import geotrellis.raster.resample._
+import geotrellis.raster.rasterize._
 import geotrellis.raster.histogram._
 import geotrellis.spark._
 import geotrellis.spark.io._
@@ -36,7 +36,7 @@ object RunTest {
     val time = DateTime.parse("2056-01-16T13:00:00-0400")
 
     val layer =
-      readerSet.singleBandLayerReader
+      readerSet.layerReader
         .query[SpaceTimeKey, Tile, TileLayerMetadata[SpaceTimeKey]](LayerId("Climate_CCSM4-RCP45-Temperature-Max", 8))
         .where(Between(time, time))
         .result
@@ -57,7 +57,7 @@ object RunTest {
           val results = Array.ofDim[Int](reprojectedStates.length)
           cfor(0)(_ < reprojectedStates.length, _ + 1) { i =>
             var max = Int.MinValue
-            reprojectedStates(i).geom.foreach(raster.rasterExtent) { (col, row) =>
+            raster.rasterExtent.foreach(reprojectedStates(i).geom) { (col, row) =>
               val z = raster.tile.get(col, row)
               if(isData(z)) {
                 if(z > max) max = z

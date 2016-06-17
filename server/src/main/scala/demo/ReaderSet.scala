@@ -16,15 +16,14 @@ import scala.reflect._
 
 trait ReaderSet {
   val layoutScheme = ZoomedLayoutScheme(WebMercator, 256)
-
-  def metadataReader: MetadataReader[SpaceTimeKey]
-  def singleBandLayerReader: FilteringLayerReader[LayerId]
+  def attributeStore: AttributeStore
+  def metadataReader: MetadataReader
+  def layerReader: FilteringLayerReader[LayerId]
   def singleBandTileReader: TileReader[SpaceTimeKey, Tile]
-  def multiBandLayerReader: FilteringLayerReader[LayerId]
   def multiBandTileReader: TileReader[SpaceTimeKey, MultibandTile]
 
   /** Do "overzooming", where we resample lower zoom level tiles to serve out higher zoom level tiles. */
-  def readSingleBandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[Tile] =
+  def readSinglebandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[Tile] =
     try {
       val z = metadataReader.layerNamesToMaxZooms(layer)
 
@@ -32,7 +31,7 @@ trait ReaderSet {
         val layerId = LayerId(layer, z)
 
         val meta = metadataReader.read(layerId)
-        val rmd = meta.tileLayerMetadata
+        val rmd = meta.rasterMetaData
 
         val requestZoomMapTransform = layoutScheme.levelForZoom(zoom).layout.mapTransform
         val requestExtent = requestZoomMapTransform(x, y)
@@ -62,7 +61,7 @@ trait ReaderSet {
         val layerId = LayerId(layer, z)
 
         val meta = metadataReader.read(layerId)
-        val rmd = meta.tileLayerMetadata
+        val rmd = meta.rasterMetaData
 
         val requestZoomMapTransform = layoutScheme.levelForZoom(zoom).layout.mapTransform
         val requestExtent = requestZoomMapTransform(x, y)
