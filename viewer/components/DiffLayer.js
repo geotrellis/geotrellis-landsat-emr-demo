@@ -28,8 +28,10 @@ var MapViews = React.createClass({
       times: {}
     };
   },
-  handleTimeSelect: function(ev, layer, index) {
-    this.updateState("timeId" + index, +ev.target.value);
+  handleTimeSelect: function(ev, currentLayer, index) {
+    let displayIndex = index + 1; // index is 0 indexed
+    this.updateState("timeId" + displayIndex, +ev.target.value);
+    debugger;
     this.props.registerTime(currentLayer.times[ev.target.value], index);
   },
   handleLayerSelect: function(ev) {
@@ -101,12 +103,12 @@ var MapViews = React.createClass({
         </Input>
 
         <Input type="select" label="Time A" placeholder="select" value={this.state.timeId1}
-            onChange={ev => this.handleTimeSelect(ev, layer, 1)}>
+            onChange={ev => this.handleTimeSelect(ev, layer, 0)}>
           {layerTimes}
         </Input>
 
         <Input type="select" label="Time B" placeholder="select" value={this.state.timeId2}
-            onChange={ev => this.handleTimeSelect(ev, layer, 2)}>
+            onChange={ev => this.handleTimeSelect(ev, layer, 1)}>
           {layerTimes}
         </Input>
         <Input type="select" label="Operation" placeholder="select" defaultValue="ndvi"

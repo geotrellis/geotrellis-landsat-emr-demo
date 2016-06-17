@@ -29,7 +29,7 @@ var SingleLayer = React.createClass({
   },
   handleTimeSelect: function(ev, currentLayer) {
     this.updateState("timeId", +ev.target.value);
-    this.props.registerTime(currentLayer.times[ev.target.value], 1);
+    this.props.registerTime(currentLayer.times[ev.target.value], 0);
   },
   handleLayerSelect: function(ev) {
     let layerId = +ev.target.value;
