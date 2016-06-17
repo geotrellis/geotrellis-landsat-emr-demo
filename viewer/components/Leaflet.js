@@ -32,7 +32,9 @@ var Leaflet = React.createClass({
       }
     }
   },
-
+  _onDeleted: function(e) {
+    console.log("Delete", e)
+  },
   render: function() {
     const style = {
       minHeight: "800px", width: "100%"
@@ -119,6 +121,7 @@ var Leaflet = React.createClass({
             position='topleft'
             onCreated={this._onDraw}
             onEdited={this._onDraw}
+            onDeleted={this._onDeleted}
             draw={{
               line: false,
               polyline: false,
