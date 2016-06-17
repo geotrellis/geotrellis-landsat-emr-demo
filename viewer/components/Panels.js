@@ -134,52 +134,9 @@ var Panels = React.createClass({
             showLayer={this.showLayer(2)}
             showLayerWithBreaks={this.showLayerWithBreaks(2)}
             showExtent={this.showExtent(2)}
+            registerTime={this.props.registerTime}
           />
         </Panel>
-
-        { showNEXLayers ?
-          <Panel header="Layer to Layer Change Detection" eventKey="3" id={3}>
-            <DiffLayers
-              ref="layerDiff"
-              rootUrl={this.props.rootUrl}
-              layers={nonLandsatLayers}
-              showLayer={this.showLayerWithBreaks(3)}
-              showLayerWithBreaks={this.showLayerWithBreaks(3)}
-              showExtent={this.showExtent(3)}
-              showMaxState={this.props.showMaxState}
-              hideMaxState={this.props.hideMaxState}
-              showMaxAverageState={this.props.showMaxAverageState}
-              hideMaxAverageState={this.props.hideMaxAverageState} />
-          </Panel>
-          : null
-        }
-
-        { showNEXLayers ?
-          <Panel header="Average by State" eventKey="4" id={4}>
-            <AverageByState
-              ref="averageByState"
-              rootUrl={this.props.rootUrl}
-              layers={nonLandsatLayers}
-              showLayerWithBreaks={this.showLayerWithBreaks(4)}
-              showStateAverage={this.showStateAverage(4)}
-              showExtent={this.showExtent(4)} />
-          </Panel>
-          : null
-        }
-
-        { showNEXLayers ?
-          <Panel header="Average Change by State" eventKey="5" id={5}>
-            <AverageDiffByState
-              ref="averageDiffByState"
-              rootUrl={this.props.rootUrl}
-              layers={nonLandsatLayers}
-              showLayerWithBreaks={this.showLayerWithBreaks(5)}
-              showStateDiffAverage={this.showStateDiffAverage(5)}
-              showExtent={this.showExtent(5)} />
-          </Panel>
-          : null
-        }
-
       </PanelGroup>
     </div>)
   }

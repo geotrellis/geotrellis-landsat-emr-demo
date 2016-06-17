@@ -9,32 +9,59 @@ import 'leaflet-draw/dist/leaflet.draw.css';
 var Leaflet = React.createClass({
 
   // Structure: /mean/{layer}/{zoom}/{ndwi/ndvi}?time=2015-06-29T00:00:00-0400'
-  _onDraw: function(geom) {
+  _onlayeradd: function(ev) {
+    let fgroup = ev.target;
+    let layer = ev.layer;
+
     let root = this.props.rootUrl;
-    let zoom = geom.layer._map._zoom;
+    let zoom = layer._map._zoom;
     let t0 = this.props.times[0];
     let t1 = this.props.times[1];
     let layerName = this.props.layerName;
     let ndi = this.props.ndi;
+    let that = this;
 
-
-    if (geom.layerType == 'marker') { // For point timeseries
-      var latlng = geom.layer._latlng;
+    let bindTimeSeriesData = function(marker) {
+      var latlng = marker._latlng;
       var url = `${root}/series/${layerName}/${zoom}/${ndi}?lng=${latlng.lng}&lat=${latlng.lat}`;
-      this.props.fetchTimeSeries(geom.layer, url);
-    } else { // For polygonal summary (mean)
-      if (this.props.layerType == 'singleLayer') {
+      that.props.fetchTimeSeries(marker, url, ndi, latlng);
+    };
+
+    let bindPolygonalSummaryData = function(polygon) {
+      if (that.props.layerType == 'singleLayer') {
         var url = `${root}/mean/${layerName}/${zoom}/${ndi}?time=${t0}`;
-        this.props.fetchPolygonalSummary(geom.layer, url, ndi);
+        that.props.fetchPolygonalSummary(layer, url, ndi);
       } else {
         var url = `${root}/mean/${layerName}/${zoom}/${ndi}?time=${t0}&otherTime=${t1}`;
-        this.props.fetchPolygonalSummary(geom.layer, url, ndi + ' difference');
+        that.props.fetchPolygonalSummary(polygon, url, ndi + ' difference');
       }
+    };
+
+    // clean up our old geoms
+    _.chain(fgroup.getLayers())
+      .filter(function(l) { return  l._leaflet_id !== layer._leaflet_id; })
+      .each(function(l) { fgroup.removeLayer(l); })
+      .value();
+
+    // Get our data
+    if (layer._latlng) { // For marker/point specific logic
+      layer.dragging.enable();
+      layer.on('dragstart', function(ev) {
+        layer.unbindPopup();
+        layer.closePopup();
+      });
+      layer.on('dragend', function(ev) { bindTimeSeriesData(layer); });
+      bindTimeSeriesData(layer);
+    } else if (layer._latlngs) { // For polygonal summary (mean)
+      layer.setStyle({ color: ndi == 'ndvi' ? '#64c59d' : '#0066ff' });
+      bindPolygonalSummaryData(layer);
     }
   },
+
   _onDeleted: function(e) {
     console.log("Delete", e)
   },
+
   render: function() {
     const style = {
       minHeight: "800px", width: "100%"
@@ -102,12 +129,10 @@ var Leaflet = React.createClass({
     var polyOptions = {
       stroke: true,
       weight: 3,
-      color: '#64c59d',
+      color: '#C0C0C0',
       fillOpacity: 0.15,
       fillColor: null // falls back on stroke color
     }
-    var ndwiOpts = polyOptions
-    ndwiOpts['color'] = 'blue';
 
     console.log(vectorLayers);
 
@@ -116,7 +141,7 @@ var Leaflet = React.createClass({
         <TileLayer url="http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"/>
         {tileLayers}
         {vectorLayers}
-        <FeatureGroup>
+        <FeatureGroup onlayeradd={this._onlayeradd}>
           <EditControl
             position='topleft'
             onCreated={this._onDraw}
@@ -127,7 +152,7 @@ var Leaflet = React.createClass({
               polyline: false,
               circle: false,
               rectangle: false,
-              polygon: { shapeOptions: ndwiOpts },
+              polygon: { shapeOptions: polyOptions },
               marker: true
             }}
           />
