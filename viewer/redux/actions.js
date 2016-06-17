@@ -88,7 +88,7 @@ var actions = {
 
     return dispatch => {
       console.log("Fetching polygonal summary", polygonLayer.toGeoJSON().geometry);
-      polygonLayer.bindPopup('<h2>Loading...</h2>');
+      polygonLayer.bindPopup('<h4>Loading...</h4>');
       return fetch(url, {
         method: 'POST',
         body: JSON.stringify(polygonLayer.toGeoJSON().geometry)
@@ -126,7 +126,7 @@ var actions = {
         timeSeries(chartID, data, title);
         layer.unbindPopup();
       } else {
-        layer.bindPopup('<h2>No data in query range</h2>');
+        layer.bindPopup('<h4>No data in query range</h4>');
         layer.openPopup();
         layer.unbindPopup();
       }
@@ -134,7 +134,7 @@ var actions = {
 
     return dispatch => {
       console.log("Fetching timeseries data", pointLayer.toGeoJSON().geometry);
-      pointLayer.bindPopup('<h2>Loading...</h2>');
+      pointLayer.bindPopup('<h4>Loading...</h4>');
       pointLayer.openPopup();
       return fetch(url).then( response => {
         pointLayer.closePopup();
