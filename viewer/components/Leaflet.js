@@ -8,6 +8,7 @@ import 'leaflet-draw/dist/leaflet.draw.css';
 
 var Leaflet = React.createClass({
 
+
   // Structure: /mean/{layer}/{zoom}/{ndwi/ndvi}?time=2015-06-29T00:00:00-0400'
   _onlayeradd: function(ev) {
     let fgroup = ev.target;
@@ -20,6 +21,16 @@ var Leaflet = React.createClass({
     let layerName = this.props.layerName;
     let ndi = this.props.ndi;
     let that = this;
+
+    geom.layer.props = {
+      rootURL: this.props.rootUrl,
+      zoom: geom.layer._map._zoom,
+      t: this.props.times,
+      layerName: this.props.layerName,
+      ndi: this.props.ndi
+    };
+    geom.layer.on('click', function(l) { debugger; });
+
 
     let bindTimeSeriesData = function(marker) {
       var latlng = marker._latlng;

@@ -138,6 +138,8 @@ var Panels = React.createClass({
           />
         </Panel>
       </PanelGroup>
+      <Panel header="" eventKey="3" id={3}>
+      </Panel>
     </div>)
   }
 });
