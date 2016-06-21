@@ -7,6 +7,8 @@ import DiffLayer from "./DiffLayer";
 import DiffLayers from "./DiffLayers";
 import AverageByState from "./AverageByState";
 import AverageDiffByState from "./AverageDiffByState";
+import TimeSeries from "./charts/TimeSeries.js";
+import IndexComparison from "./charts/IndexComparison.js";
 
 var Panels = React.createClass({
   getInitialState: function () {
@@ -104,6 +106,24 @@ var Panels = React.createClass({
   render: function() {
     let nonLandsatLayers = _.filter(this.props.layers, l => {return ! l.isLandsat});
     let showNEXLayers = nonLandsatLayers.length > 0;
+
+    var chartPanel;
+    if (this.props.analysisLayer) {
+      if (this.props.analysisLayer.chartProps.geomType == 'point') {
+        chartPanel = (<Panel header="Selected Data" eventKey="3" id={3}>
+          <TimeSeries point={this.props.analysisLayer}
+                      ndi={this.props.ndi}
+                      fetchTimeSeries={this.props.fetchTimeSeries} />
+        </Panel>)
+      } else {
+        chartPanel = (<Panel header="Selected Data" eventKey="3" id={3}>
+          <IndexComparison poly={this.props.analysisLayer}
+                           ndi={this.props.ndi} />
+                           fetchPolygonalSummary={this.props.fetchPolygonalSummary} />
+        </Panel>)
+      }
+    }
+
     return (
     <div>
       <Input type="checkbox" label="Snap to layer extent" checked={this.state.autoZoom} onChange={this.handleAutoZoom} />
@@ -138,8 +158,8 @@ var Panels = React.createClass({
           />
         </Panel>
       </PanelGroup>
-      <Panel header="" eventKey="3" id={3}>
-      </Panel>
+
+      {chartPanel}
     </div>)
   }
 });

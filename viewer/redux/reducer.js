@@ -1,5 +1,7 @@
 var reducer = function (state, action) {
   switch (action.type) {
+    case 'SET_ANALYSIS_LAYER':
+      return Object.assign({}, state, { analysisLayer: action.layer });
     case 'SET_NDI':
       return Object.assign({}, state, { ndi: action.ndi });
     case 'SET_LAYER_TYPE':

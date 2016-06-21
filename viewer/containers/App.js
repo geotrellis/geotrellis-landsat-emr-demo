@@ -30,7 +30,8 @@ var App = React.createClass({
             stateAverage={this.props.map.stateAverage}
             stateDiffAverage={this.props.map.stateDiffAverage}
             fetchPolygonalSummary={this.props.actions.fetchPolygonalSummary}
-            fetchTimeSeries={this.props.actions.fetchTimeSeries} />
+            fetchTimeSeries={this.props.actions.fetchTimeSeries}
+            setAnalysisLayer={this.props.actions.setAnalysisLayer} />
         </div>
 
         <div className="col-md-3" >
@@ -40,6 +41,7 @@ var App = React.createClass({
               bounds={this.props.map.bounds}
               onSubmit={url => this.props.actions.fetchCatalog(url)} />
             <Panels
+              analysisLayer={this.props.analysisLayer}
               ndi={this.props.ndi}
               rootUrl={this.props.rootUrl}
               layers={this.props.catalog.layers}
@@ -57,6 +59,8 @@ var App = React.createClass({
               registerTime={this.props.actions.registerTime}
               setIndexType={this.props.actions.setIndexType}
               setLayerType={this.props.actions.setLayerType}
+              fetchPolygonalSummary={this.props.actions.fetchPolygonalSummary}
+              fetchTimeSeries={this.props.actions.fetchTimeSeries}
             />
           </div>
         </div>
