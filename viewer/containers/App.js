@@ -31,7 +31,9 @@ var App = React.createClass({
             stateDiffAverage={this.props.map.stateDiffAverage}
             fetchPolygonalSummary={this.props.actions.fetchPolygonalSummary}
             fetchTimeSeries={this.props.actions.fetchTimeSeries}
-            setAnalysisLayer={this.props.actions.setAnalysisLayer} />
+            setAnalysisLayer={this.props.actions.setAnalysisLayer}
+            analysisLayer={this.props.analysisLayer}
+          />
         </div>
 
         <div className="col-md-3" >
@@ -59,8 +61,10 @@ var App = React.createClass({
               registerTime={this.props.actions.registerTime}
               setIndexType={this.props.actions.setIndexType}
               setLayerType={this.props.actions.setLayerType}
+              layerType={this.props.layerType}
               fetchPolygonalSummary={this.props.actions.fetchPolygonalSummary}
               fetchTimeSeries={this.props.actions.fetchTimeSeries}
+              times={this.props.times[this.props.layerName]}
             />
           </div>
         </div>

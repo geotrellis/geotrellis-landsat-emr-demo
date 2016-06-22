@@ -1,5 +1,6 @@
 import fetch from 'isomorphic-fetch';
 import shortid from 'shortid';
+import $ from 'jquery';
 
 var actions = {
   setLayerType: function(layerType) {

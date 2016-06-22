@@ -3,6 +3,7 @@ import { render } from 'react-dom';
 import fetch from 'isomorphic-fetch';
 import shortid from 'shortid';
 import _ from 'lodash';
+import $ from 'jquery';
 import Loader from 'react-loader';
 import MG from 'metrics-graphics';
 import "metrics-graphics/dist/metricsgraphics.css";
@@ -31,20 +32,34 @@ var TimeSeries = React.createClass({
         this._renderChart(pointLayer, ndi);
       });
     },
-    error => {
-    });
+    error => {});
   },
   _renderChart: function(point, ndi) {
-    MG.data_graphic({
-      target: document.getElementById(this.domId),
-      data: point.stats[this.props.ndi],
-      title: (ndi == 'ndvi' ? 'NDVI' : 'NDWI') + ` values at ${round(point._latlng.lat) + ', ' + round(point._latlng.lng) }`,
-      width: this.props.width || 300,
-      height: this.props.height || 200,
-      right: this.props.rightOffset || 40,
-      x_accessor: this.props.xAccessor || 'date',
-      y_accessor: this.props.yAccessor || 'value'
-    });
+    if (_.isEmpty(point.stats[this.props.ndi])) {
+      MG.data_graphic({
+        target: document.getElementById(this.domId),
+        missing_text: "No data available for the current point",
+        chart_type: 'missing-data',
+        full_width: true,
+        height: this.props.height || 200,
+        right: this.props.rightOffset || 40
+      });
+    } else {
+      MG.data_graphic({
+        target: document.getElementById(this.domId),
+        data: point.stats[this.props.ndi],
+        title: (ndi === 'ndvi' ? 'NDVI' : 'NDWI') + ` values at ${round(point._latlng.lat) + ', ' + round(point._latlng.lng) }`,
+        full_width: true,
+        height: (this.props.height || 200),
+        right: (this.props.rightOffset || 40),
+        min_y: -1.0,
+        max_y: 1.0,
+        x_accessor: this.props.xAccessor || 'date',
+        y_accessor: this.props.yAccessor || 'value',
+        animate_on_load: true,
+        color: (ndi === 'ndvi' ? '#64c59d' : '#add8e6')
+      });
+    }
   },
   componentWillMount: function() {
     if (! this.props.point.stats[this.props.ndi]) {
@@ -52,11 +67,11 @@ var TimeSeries = React.createClass({
       this._fetchTimeSeries(this.props.point, this.props.ndi);
     } else {
       this.setState({ loaded: true });
-      this._renderChart(this.props.point, this.props.ndi)
+      this._renderChart(this.props.point, this.props.ndi);
     }
   },
   componentWillReceiveProps: function(nextProps) {
-    if (! nextProps.point.stats[this.props.ndi]) {
+    if (! nextProps.point.stats[nextProps.ndi]) {
       this.setState({ loaded: false });
       this._fetchTimeSeries(nextProps.point, nextProps.ndi);
     } else if (this.state.loaded) {
@@ -64,7 +79,8 @@ var TimeSeries = React.createClass({
     }
   },
   render: function() {
-    this.domId = shortid.generate();
+    if (! this.domId) { this.domId = shortid.generate(); }
+
     return (
       <Loader loaded={this.state.loaded}>
         <div id={this.domId}></div>

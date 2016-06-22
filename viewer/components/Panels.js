@@ -112,14 +112,14 @@ var Panels = React.createClass({
       if (this.props.analysisLayer.chartProps.geomType == 'point') {
         chartPanel = (<Panel header="Selected Data" eventKey="3" id={3}>
           <TimeSeries point={this.props.analysisLayer}
-                      ndi={this.props.ndi}
-                      fetchTimeSeries={this.props.fetchTimeSeries} />
+                      ndi={this.props.ndi} />
         </Panel>)
       } else {
         chartPanel = (<Panel header="Selected Data" eventKey="3" id={3}>
           <IndexComparison poly={this.props.analysisLayer}
-                           ndi={this.props.ndi} />
-                           fetchPolygonalSummary={this.props.fetchPolygonalSummary} />
+                           ndi={this.props.ndi}
+                           times={this.props.times}
+                           layerType={this.props.layerType} />
         </Panel>)
       }
     }
