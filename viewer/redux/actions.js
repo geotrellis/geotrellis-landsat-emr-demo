@@ -6,7 +6,7 @@ var actions = {
   setLayerType: function(layerType) {
     return {
       type: 'SET_LAYER_TYPE',
-      layer: layer
+      layer: layerType
     };
   },
   registerTime: function(time, index) {

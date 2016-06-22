@@ -50,13 +50,13 @@ var IndexComparison = React.createClass({
     }
   },
   _renderChart: function(polyLayer, ndi) {
+    let ctx = document.getElementById("canvas").getContext('2d');
     let canvas = {
       width: 300,
       height: 200
     };
-    const ctx = this.refs.canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    this._fillBox(ctx, polyLayer.stats[this.props.ndi], ndi);
+    this._fillBox(ctx, polyLayer.stats[ndi], ndi);
     ctx.fillStyle = '#000000';
     ctx.font = '15px Arial';
 
@@ -83,21 +83,8 @@ var IndexComparison = React.createClass({
     ctx.moveTo(300, 40);
     ctx.lineTo(300, canvas.height);
     ctx.stroke();
-    //MG.data_graphic({
-    //  target: document.getElementById(this.domId),
-    //  title: "Bar Prototype",
-    //  bar_orientation: 'vertical',
-    //  data: polyLayer.stats[this.props.ndi],
-    //  chart_type: 'bar',
-    //  y_accessor: 'value',
-    //  min_y: -1.0,
-    //  max_y: 1.0,
-    //  height: (this.props.height || 200),
-    //  full_width: true,
-    //  right: (this.props.rightOffset || 40)
-    //});
   },
-  componentWillMount: function() {
+  componentDidMount: function() {
     if (! this.props.poly.stats[this.props.ndi]) {
       this.setState({ loaded: false });
       this._fetchPolygonalSummary(this.props.poly, this.props.ndi);
@@ -115,15 +102,12 @@ var IndexComparison = React.createClass({
     }
   },
   render: function() {
-    this.domId = shortid.generate();
-    if (! this.domId) { this.domId = shortid.generate(); }
-
+    let loading = this.state.loaded ? null : (<p>Loading data...</p>)
     return (
-      <Loader loaded={this.state.loaded}>
-        <div id={this.domId}>
-          <canvas ref="canvas" width={300} height={200} />
-        </div>
-      </Loader>
+      <div>
+        {loading}
+        <canvas id="canvas" width={300} height={200} hidden={! this.state.loaded}/>
+      </div>
     );
   }
 });

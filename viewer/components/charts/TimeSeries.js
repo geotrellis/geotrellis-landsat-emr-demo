@@ -35,7 +35,7 @@ var TimeSeries = React.createClass({
     error => {});
   },
   _renderChart: function(point, ndi) {
-    if (_.isEmpty(point.stats[this.props.ndi])) {
+    if (_.isEmpty(point.stats[ndi])) {
       MG.data_graphic({
         target: document.getElementById(this.domId),
         missing_text: "No data available for the current point",
@@ -47,7 +47,7 @@ var TimeSeries = React.createClass({
     } else {
       MG.data_graphic({
         target: document.getElementById(this.domId),
-        data: point.stats[this.props.ndi],
+        data: point.stats[ndi],
         title: (ndi === 'ndvi' ? 'NDVI' : 'NDWI') + ` values at ${round(point._latlng.lat) + ', ' + round(point._latlng.lng) }`,
         full_width: true,
         height: (this.props.height || 200),
@@ -61,7 +61,7 @@ var TimeSeries = React.createClass({
       });
     }
   },
-  componentWillMount: function() {
+  componentDidMount: function() {
     if (! this.props.point.stats[this.props.ndi]) {
       this.setState({ loaded: false });
       this._fetchTimeSeries(this.props.point, this.props.ndi);
@@ -79,12 +79,14 @@ var TimeSeries = React.createClass({
     }
   },
   render: function() {
+    let loading = this.state.loaded ? null : (<p>Loading data...</p>)
     if (! this.domId) { this.domId = shortid.generate(); }
 
     return (
-      <Loader loaded={this.state.loaded}>
+      <div>
+        {loading}
         <div id={this.domId}></div>
-      </Loader>
+      </div>
     );
   }
 });

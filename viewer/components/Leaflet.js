@@ -12,7 +12,6 @@ import './leaflet-icons.css';
 
 var Leaflet = React.createClass({
 
-  // Structure: /mean/{layer}/{zoom}/{ndwi/ndvi}?time=2015-06-29T00:00:00-0400'
   _onlayeradd: function(ev) {
     var fgroup = ev.target;
     var addedLayer = ev.layer;
@@ -47,7 +46,7 @@ var Leaflet = React.createClass({
       }
     };
 
-    addedLayer.on('click', function(ev) {
+    let selectLayer = function() {
       let allLayers = fgroup.getLayers();
 
       // deselect all other layers
@@ -66,7 +65,9 @@ var Leaflet = React.createClass({
       });
 
       setAnalysisLayer(addedLayer);
-    });
+    };
+    addedLayer.on('click', function(ev) { selectLayer(); });
+    selectLayer();
   },
 
   _onDeleted: function(e) {
