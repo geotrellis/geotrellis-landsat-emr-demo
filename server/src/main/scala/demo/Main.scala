@@ -72,6 +72,9 @@ object Main {
         val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
 
         new AccumuloReaderSet(instance)
+      } else if(args(0) == "hdfs"){
+        val path = new org.apache.hadoop.fs.Path(args(1))
+        new HadoopReaderSet(path)
       } else if(args(0) == "s3"){
         val bucket = args(1)
         val prefix = args(2)

@@ -13,6 +13,7 @@ import geotrellis.spark.io.index._
 import geotrellis.spark.io.s3._
 import geotrellis.spark.io.file._
 import geotrellis.spark.io.accumulo._
+import geotrellis.spark.partition._
 import geotrellis.spark.util._
 import geotrellis.spark.tiling._
 import geotrellis.spark.pyramid._
@@ -100,6 +101,7 @@ object LandsatIngest extends Logging {
     val destCRS = WebMercator
     val resampleMethod = Bilinear
     val layoutScheme = ZoomedLayoutScheme(destCRS, 256)
+    val indexMethod = ZCurveKeyIndexMethod.byDay
     val reprojected = fetch(images, fetchMethod)
     val tileLayerMetadata = calculateTileLayerMetadata(maxZoom, destCRS, images)
     logger.info("sTileLayerMetadata calculated: $tileLayerMetadata")
@@ -107,7 +109,7 @@ object LandsatIngest extends Logging {
     val rdd = new ContextRDD(tiledRdd, tileLayerMetadata)
 
     Pyramid.upLevels(rdd, layoutScheme, maxZoom, 1, resampleMethod){ (rdd, zoom) =>
-      writer.write(LayerId(layerName, zoom), rdd, ZCurveKeyIndexMethod.byDay)
+      writer.write(LayerId(layerName, zoom), rdd, indexMethod)
 
       if (zoom == 1) {
         // Store attributes common across zooms for catalog to see
@@ -129,10 +131,11 @@ object LandsatIngestMain extends Logging {
 
   def main(args: Array[String]): Unit = {
     logger.info(s"Arguments: ${args.toSeq}")
+
+    implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
     val config = Config.parse(args)
     logger.info(s"Config: $config")
 
-    implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
     val images = Landsat8Query()
       .withStartDate(config.startDate.toDateTimeAtStartOfDay)
       .withEndDate(config.endDate.toDateTimeAtStartOfDay)

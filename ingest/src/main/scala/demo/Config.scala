@@ -7,6 +7,7 @@ import geotrellis.spark._
 import geotrellis.spark.io._
 import geotrellis.spark.io.index._
 import geotrellis.spark.io.s3._
+import geotrellis.spark.io.hadoop._
 import geotrellis.spark.io.file._
 import geotrellis.spark.io.accumulo._
 import com.azavea.landsatutil._
@@ -15,6 +16,7 @@ import org.apache.accumulo.core.client.security.tokens._
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.fs._
 import org.apache.hadoop.conf._
+import org.apache.spark._
 import spray.json._
 import org.joda.time._
 
@@ -38,11 +40,13 @@ case class Config (
     case None => IOHook.passthrough
   }
 
-  def writer(): LayerWriter[LayerId] = output match {
+  def writer(implicit sc: SparkContext): LayerWriter[LayerId] = output match {
     case "s3" =>
       S3LayerWriter(params("bucket"), params("prefix"))
     case "file" =>
       FileLayerWriter(params("path"))
+    case "hdfs" =>
+      HadoopLayerWriter(new Path(params("path")))
     case "accumulo" =>
       val zookeeper: String = params.get("zookeeper").getOrElse {
         val conf = new Configuration // if not specified assume zookeeper is same as DFS master
