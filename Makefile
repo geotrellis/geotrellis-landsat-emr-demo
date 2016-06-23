@@ -1,23 +1,6 @@
-include config-aws.mk
-
-export NAME := Landsat Demo
-export MASTER_INSTANCE:=m3.xlarge
-export MASTER_PRICE := 0.5
-export MASTER_MEMORY := 9500M
-export WORKER_INSTANCE:=m3.2xlarge
-export WORKER_COUNT := 2
-export WORKER_PRICE := 0.5
-export EXECUTOR_MEMORY := 4400M
-export EXECUTOR_CORES := 2
-export YARN_OVERHEAD := 700
-export USE_SPOT:=true
-
-# Query parameters
-export LAYER_NAME := japan-typhoon
-export START_DATE := 2015-07-01
-export END_DATE := 2015-11-30
-export BBOX := 135.35,33.23,143.01,41.1
-export MAX_CLOUD_COVERAGE := 20.0
+include config-aws.mk			# Vars related to AWS credentials and services used
+include config-emr.mk	    # Vars related to type and size of EMR cluster
+include config-ingest.mk  # Vars related to ingest step and spark parameters
 
 SERVER_ASSEMBLY := server/target/scala-2.10/server-assembly-0.1.0.jar
 INGEST_ASSEMBLY := ingest/target/scala-2.10/ingest-assembly-0.1.0.jar
@@ -38,9 +21,6 @@ endif
 
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
-test:
-	echo hello
-
 ${SERVER_ASSEMBLY}: $(call rwildcard, server/src, *.scala) server/build.sbt
 	./sbt "project server" assembly -no-colors
 	@touch -m ${SERVER_ASSEMBLY}
@@ -50,7 +30,7 @@ ${INGEST_ASSEMBLY}: $(call rwildcard, ingest/src, *.scala) ingest/build.sbt
 	@touch -m ${INGEST_ASSEMBLY}
 
 viewer/site.tgz: $(call rwildcard, viewer/components, *.js)
-	@cd viewer && npm install &&npm run build
+	@cd viewer && npm install && npm run build
 	tar -czf viewer/site.tgz -C viewer/dist .
 
 upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
@@ -79,8 +59,8 @@ Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
 Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz] \
 | tee cluster-id.txt
 
-start-ingest: LIMIT=9999
-start-ingest:
+ingest: LIMIT=9999
+ingest:
 	@if [ -z $$START_DATE ]; then echo "START_DATE is not set" && exit 1; fi
 	@if [ -z $$END_DATE ]; then echo "END_DATE is not set" && exit 1; fi
 
@@ -88,7 +68,8 @@ start-ingest:
 --steps Type=CUSTOM_JAR,Name="Ingest ${LAYER_NAME}",Jar=command-runner.jar,Args=[\
 spark-submit,--master,yarn-cluster,\
 --class,demo.LandsatIngestMain,\
---driver-memory,${MASTER_MEMORY},\
+--driver-memory,${DRIVER_MEMORY},\
+--driver-cores,${DRIVER_CORES},\
 --executor-memory,${EXECUTOR_MEMORY},\
 --executor-cores,${EXECUTOR_CORES},\
 --conf,spark.dynamicAllocation.enabled=true,\
@@ -178,4 +159,4 @@ update-route53:
 --hosted-zone-id ${HOSTED_ZONE} \
 --change-batch "file://$(CURDIR)/scripts/upsert.json"
 
-.PHONY: local-ingest local-tile-server update-route53
+.PHONY: local-ingest ingest local-tile-server update-route53
