@@ -29,6 +29,7 @@ var Leaflet = React.createClass({
 
     // Initialize object for different types of statistic
     addedLayer.stats = {};
+    addedLayer.comparisonStats = {};
 
     let setMarkerSelection = function(marker) {
       if (marker.chartProps.selected) {

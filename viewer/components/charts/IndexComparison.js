@@ -8,12 +8,12 @@ var IndexComparison = React.createClass({
   getInitialState: function () {
     return { loaded: false };
   },
-  _fetchPolygonalSummary: function(polyLayer, ndi) {
+  _fetchPolygonalSummary: function(polyLayer, ndi, times, layerType) {
     let root = polyLayer.chartProps.rootURL;
     let layerName = polyLayer.chartProps.layerName;
     let latlng = polyLayer._latlng;
     let timeQString = `?time=${this.props.times[0]}`;
-    let otherTimeQString = (this.props.layerType == 'intraLayerDiff' ? `&otherTime=${this.props.times[1]}` : '');
+    let otherTimeQString = (layerType == 'intraLayerDiff' ? `&otherTime=${this.props.times[1]}` : '');
     let url = `${root}/mean/${layerName}/${ndi}` + timeQString + otherTimeQString;
 
     return fetch(url, {
@@ -23,9 +23,13 @@ var IndexComparison = React.createClass({
       response.json().then( summary => {
         var data = summary.answer;
 
-        polyLayer.stats[ndi] = data;
+        if (layerType == 'intraLayerDiff') {
+          polyLayer.comparisonStats[ndi] = data;
+        } else {
+          polyLayer.stats[ndi] = data;
+        }
         this.setState({ loaded: true });
-        this._renderChart(polyLayer, ndi);
+        this._renderChart(polyLayer, ndi, layerType);
       });
     },
     error => {});
@@ -33,30 +37,25 @@ var IndexComparison = React.createClass({
   _fillBox: function(ctx, value, ndi) {
     let color = ndi === 'ndvi' ? '#64c59d' : '#add8e6';
     ctx.fillStyle = color;
-    if (value > 0) {
-      ctx.fillRect(
-        150,
-        50,
-        value * 150,
-        130
-      );
-    } else {
-      ctx.fillRect(
-        150 + (value * 150),
-        50,
-        Math.abs(value) * 150,
-        130
-      );
-    }
+    ctx.fillRect(
+      (value > 0 ? 150 : 150 + (value * 150)),
+      50,
+      Math.abs(value) * 150,
+      130
+    );
   },
-  _renderChart: function(polyLayer, ndi) {
+  _renderChart: function(polyLayer, ndi, layerType) {
     let ctx = document.getElementById("canvas").getContext('2d');
     let canvas = {
       width: 300,
       height: 200
     };
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    this._fillBox(ctx, polyLayer.stats[ndi], ndi);
+    if (layerType == 'intraLayerDiff') {
+      this._fillBox(ctx, polyLayer.comparisonStats[ndi], ndi);
+    } else {
+      this._fillBox(ctx, polyLayer.stats[ndi], ndi);
+    }
     ctx.fillStyle = '#000000';
     ctx.font = '15px Arial';
 
@@ -85,20 +84,39 @@ var IndexComparison = React.createClass({
     ctx.stroke();
   },
   componentDidMount: function() {
-    if (! this.props.poly.stats[this.props.ndi]) {
-      this.setState({ loaded: false });
-      this._fetchPolygonalSummary(this.props.poly, this.props.ndi);
+    if (this.props.layerType === 'intraLayerDiff') {
+      if (! this.props.poly.comparisonStats[this.props.ndi]) {
+        this.setState({ loaded: false });
+        this._fetchPolygonalSummary(this.props.poly, this.props.ndi, this.props.times, this.props.layerType);
+      } else {
+        this.setState({ loaded: true });
+        this._renderChart(this.props.poly, this.props.ndi, this.props.layerType);
+      }
     } else {
-      this.setState({ loaded: true });
-      this._renderChart(this.props.poly, this.props.ndi);
+      if (! this.props.poly.stats[this.props.ndi]) {
+        this.setState({ loaded: false });
+        this._fetchPolygonalSummary(this.props.poly, this.props.ndi, this.props.times, this.props.layerType);
+      } else {
+        this.setState({ loaded: true });
+        this._renderChart(this.props.poly, this.props.ndi, this.props.layerType);
+      }
     }
   },
   componentWillReceiveProps: function(nextProps) {
-    if (! nextProps.poly.stats[nextProps.ndi]) {
-      this.setState({ loaded: false });
-      this._fetchPolygonalSummary(nextProps.poly, nextProps.ndi);
-    } else if (this.state.loaded) {
-      this._renderChart(nextProps.poly, nextProps.ndi);
+    if (nextProps.layerType === 'intraLayerDiff') {
+      if (! nextProps.poly.comparisonStats[nextProps.ndi]) {
+        this.setState({ loaded: false });
+        this._fetchPolygonalSummary(nextProps.poly, nextProps.ndi, nextProps.times, nextProps.layerType);
+      } else if (this.state.loaded) {
+        this._renderChart(nextProps.poly, nextProps.ndi, nextProps.layerType);
+      }
+    } else {
+      if (! nextProps.poly.stats[nextProps.ndi]) {
+        this.setState({ loaded: false });
+        this._fetchPolygonalSummary(nextProps.poly, nextProps.ndi, nextProps.times, nextProps.layerType);
+      } else if (this.state.loaded) {
+        this._renderChart(nextProps.poly, nextProps.ndi, nextProps.layerType);
+      }
     }
   },
   render: function() {
