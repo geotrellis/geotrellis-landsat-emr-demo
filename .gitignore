@@ -36,3 +36,4 @@ _SUCCESS
 tags
 catalog
 scripts/upsert.json
+config-aws.mk
