@@ -116,19 +116,11 @@ proxy:
 ssh:
 	aws emr ssh --cluster-id ${CLUSTER_ID} --key-pair-file "${HOME}/${EC2_KEY}.pem"
 
-local-ingest: CATALOG=catalog
-local-ingest: LIMIT=9999
 local-ingest: ${INGEST_ASSEMBLY}
-	@if [ -z $$START_DATE ]; then echo "START_DATE is not set" && exit 1; fi
-	@if [ -z $$END_DATE ]; then echo "END_DATE is not set" && exit 1; fi
-
 	spark-submit --name "${NAME} Ingest" --master "local[4]" --driver-memory 4G \
 ${INGEST_ASSEMBLY} \
---layerName landsat \
---bbox ${BBOX} --startDate ${START_DATE} --endDate ${END_DATE} \
---output file \
---params path=${CATALOG} \
---limit ${LIMIT}
+--credentials "file:///${PWD}/conf/credentials.json" \
+--datasets "file://${PWD}/conf/datasets.json"
 
 local-tile-server: CATALOG=catalog
 local-tile-server:
