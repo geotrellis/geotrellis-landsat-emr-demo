@@ -1,0 +1,31 @@
+[
+  {
+    "name":"landsat",
+    "ingestType":{
+      "format":"geotiff",
+      "output":"file",
+      "input":"landsat"
+    },
+    "path":{
+      "input":"--cache catalog-cache --bbox -43.9883,-22.3221,-42.7695,-21.0435 --startDate 2015-06-01 --endDate 2015-06-10 --limit 1",
+      "output":"catalog"
+    },
+    "cache":"NONE",
+    "ingestOptions":{
+      "reprojectMethod": "buffered",
+      "cellSize":{
+        "width": 256.0,
+        "height": 256.0
+      },
+      "tileSize": 256,
+      "pyramid": true,
+      "resampleMethod": "nearest-neighbor",
+      "keyIndexMethod": {
+        "type":"zorder",
+        "temporalResolution": 86400000
+      },
+      "layoutScheme": "tms",
+      "crs": "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs "
+    }
+  }
+]

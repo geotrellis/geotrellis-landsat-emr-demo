@@ -21,7 +21,7 @@ class TemporalMultibandLandsatInput extends LandsatInput[TemporalProjectedExtent
       .withStartDate(input.get('startDate).map(LocalDate.parse).getOrElse(new LocalDate(2014,1,1)).toDateTimeAtStartOfDay)
       .withEndDate(input.get('endDate).map(LocalDate.parse).getOrElse(new LocalDate(2015,1,1)).toDateTimeAtStartOfDay)
       .withMaxCloudCoverage(input.get('maxCloudCoverage).map(_.toDouble).getOrElse(100d))
-      .intersects(Extent.fromString(input('extent)))
+      .intersects(Extent.fromString(input('bbox)))
       .collect()
 
     logger.info(s"Found ${images.length} landsat images")
