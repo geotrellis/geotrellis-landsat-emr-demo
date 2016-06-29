@@ -10,6 +10,7 @@ import geotrellis.spark.io.s3._
 import geotrellis.spark.io.hadoop._
 import geotrellis.spark.io.file._
 import geotrellis.spark.io.accumulo._
+import geotrellis.spark.io.cassandra._
 import com.azavea.landsatutil._
 
 import org.apache.accumulo.core.client.security.tokens._
@@ -58,6 +59,11 @@ case class Config (
         case None => SocketWriteStrategy()
       }
       AccumuloLayerWriter(instance, params("table"), strategy)
+    case "cassandra" =>
+      CassandraLayerWriter(
+        BaseCassandraInstance(params("host").split(",").map(_.trim)),
+        params.getOrElse("keyspace", "geotrellis"),
+        params.getOrElse("table", "tiles"))
   }
 }
 
