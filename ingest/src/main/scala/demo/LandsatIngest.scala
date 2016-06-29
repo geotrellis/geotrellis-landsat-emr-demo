@@ -5,7 +5,7 @@ import demo.etl.landsat.{LandsatModule, TemporalMultibandLandsatInput}
 import geotrellis.vector.io._
 import geotrellis.raster._
 import geotrellis.spark._
-import geotrellis.spark.io.{Writer, _}
+import geotrellis.spark.io._
 import geotrellis.spark.etl.{Etl, EtlJob, OutputPlugin}
 import geotrellis.spark.etl.config.EtlConf
 import geotrellis.spark.util._
@@ -35,7 +35,7 @@ object LandsatIngest extends Logging {
     val resampleMethod = config.ingestOptions.resampleMethod
     val layoutScheme = config.ingestOptions.getLayoutScheme
     val tileLayerMetadata = inputPlugin.calculateTileLayerMetadata(maxZoom, destCRS)
-    logger.info("sTileLayerMetadata calculated: $tileLayerMetadata")
+    logger.info(s"TileLayerMetadata calculated: $tileLayerMetadata")
     val tiledRdd = reprojected.tileToLayout(tileLayerMetadata, resampleMethod)
     val rdd = new ContextRDD(tiledRdd, tileLayerMetadata)
 

@@ -12,6 +12,8 @@ trait EtlJobsLandsatMethods {
                |
                |Usage: geotrellis-etl-landsat-input [options]
                |
+               |  --bandsWanted <value>
+               |        bandsWanted is a non-empty String property
                |  --startDate <value>
                |        startDate is a non-empty String property
                |  --endDate <value>
@@ -31,6 +33,8 @@ trait EtlJobsLandsatMethods {
   def nextOption(map: Map[Symbol, String], list: Seq[String]): Map[Symbol, String] =
     list.toList match {
       case Nil => map
+      case "--bandsWanted" :: value :: tail =>
+        nextOption(map ++ Map('bandsWanted -> value), tail)
       case "--startDate" :: value :: tail =>
         nextOption(map ++ Map('startDate -> value), tail)
       case "--endDate" :: value :: tail =>
@@ -61,4 +65,5 @@ trait EtlJobsLandsatMethods {
     case None => IOHook.passthrough
   }
 
+  def bandsWanted = landsatInput('bandsWanted).split(",")
 }

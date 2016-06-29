@@ -46,6 +46,8 @@ package object landsat {
         HadoopAttributeStore(job.outputProps("path"), SparkHadoopUtil.get.newConfiguration(new SparkConf()))
       case S3Type =>
         S3AttributeStore(job.outputProps("bucket"), job.outputProps("key"))
+      case UserDefinedBackendType(s) => throw new Exception(s"No Attribute store for user defined backend type $s")
+      case UserDefinedBackendInputType(s) => throw new Exception(s"No Attribute store for user defined backend input type $s")
     }
   }
 }

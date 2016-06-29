@@ -7,7 +7,7 @@
       "input":"landsat"
     },
     "path":{
-      "input":"--cache catalog-cache --bbox -43.9883,-22.3221,-42.7695,-21.0435 --startDate 2015-06-01 --endDate 2015-06-10 --limit 1",
+      "input":"--cache catalog-cache --bandsWanted 4,3,2,5,QA --bbox -43.9883,-22.3221,-42.7695,-21.0435 --startDate 2015-06-01 --endDate 2015-06-10 --limit 1",
       "output":"catalog"
     },
     "cache":"NONE",

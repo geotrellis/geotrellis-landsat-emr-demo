@@ -17,18 +17,11 @@ import scala.util.Try
 abstract class LandsatInput[I, V] extends InputPlugin[I, V] {
   val name = "landsat"
 
-  val bandsWanted = Array(
-    // Red, Green, Blue
-    "4", "3", "2",
-    // Near IR
-    "5",
-    "QA")
-
   var images: Seq[LandsatImage] = Seq()
 
   def fetchMethod: (LandsatImage, EtlJob) => Option[ProjectedRaster[MultibandTile]] = { (img, job) =>
-    Try { img.getRasterFromS3(bandsWanted = bandsWanted, hook = job.cacheHook) }
-      .recover{ case err => img.getFromGoogle(bandsWanted = bandsWanted, hook = job.cacheHook).raster }
+    Try { img.getRasterFromS3(bandsWanted = job.bandsWanted, hook = job.cacheHook) }
+      .recover{ case err => img.getFromGoogle(bandsWanted = job.bandsWanted, hook = job.cacheHook).raster }
       .toOption
   }
 
