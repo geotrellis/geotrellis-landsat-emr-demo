@@ -4,7 +4,7 @@
   "description": "Basic UI to display GeoTrellis layers and opeartions",
   "author": "Eugene Cheipesh",
   "scripts": {
-      "start": "nodemon server/server.js --ignore components --ignore containers",
+      "start": "node_modules/nodemon/bin/nodemon.js server/server.js --ignore components --ignore containers",
       "build": "node_modules/webpack/bin/webpack.js -d"
   },
   "dependencies": {
@@ -49,6 +49,8 @@
     "webpack-hot-middleware": "^2.5.0"
   },
   "devDependencies": {
-    "html-webpack-plugin": "^2.19.0"
+      "html-webpack-plugin": "^2.19.0",
+      "nodemon": "1.9.2"
+
   }
 }
