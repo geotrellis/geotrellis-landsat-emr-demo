@@ -2,6 +2,21 @@
 
 This project is a demo of using GeoTrellis to ingest a set of Landsat scenes from S3 into an AWS EMR instance running Apache Accumulo and stand up tile sever that is serves the Landsat multi-band tiles as either RGB, NDVI, or NDWI layers. In addition it provides a change view between two layers, scenes captured at different time, for either NDWI or NDVI.
 
+
+- [Project Strucutre](#project-structure)
+- [Makefile](#makefile)
+- [Running](#running)
+  - [Running Locally](#running-locally)
+  - [Running on EMR](#running-on-emr)
+    - [Configuration](#configuration)
+    - [Upload Code](#upload-code)
+    - [Create Cluster](#create-cluster)
+    - [Ingest](#ingest)
+    - [Debugging and Monitoring](#debugging-and-monitoring)
+    - [Terminate Cluster](#terminate-cluster)
+- [Deployment](#deployment)
+  - [Jenkins](#jenkins)
+
 ## Project Structure
 
 This project consist of three modules:
@@ -46,7 +61,7 @@ We will see them get used individually but here is the outline:
 
 As you execute these commands you should look at the `Makefile` content and feel free to make it your own. The plethora of configuration options make many opportunities for mistakes and it is very helpful to capture the process in a script such as this.
 
-## Local Development
+## Running
 
 If you were developing a project like this your first steps should be to write unit tests, then the project should be run in spark local mode, it should be tested on a cluster with limited input, and finally with full input. These steps represent increasingly longer feedback cycles and should be followed in that order to save your time.
 
@@ -218,7 +233,7 @@ All that happened here is that the `Makefile` constructed the `aws emr create-cl
 
 Finally `aws` command has given us a cluster id that was just created and we save it off to `cluster-id.txt` so we can refer to it in future commands.
 
-#### Start Ingest Step
+#### Ingest
 
 ```console
 ❯ make LIMIT=1 ingest
@@ -294,7 +309,7 @@ When you're done you can either use the AWS web console to terminate the cluster
 aws emr terminate-clusters --cluster-ids j-2L3HJ8N2BMVDV
 ```
 
-## Deployment
+# Deployment
 
 It is important to emphasize that GeoTrellis is a library and as such does not hold any opinions on deployment by itself. It is rather the nature of the application using GeoTrellis that dictates what is an appropriate deployment strategy. For instance we can imagine two different ways in which this demo application could be deployed:
 
@@ -313,7 +328,7 @@ A second way such application could be deployed is as a long-lived cluster that 
 It is important to note that in this scenario the Spark ingest is not triggered by the user interactions and in fact a spark context is not required to satisfy user requests. After the initial job we are in fact treating ERM cluster as an Accumulo backed tile service to satisfy user requests. Because Spark context is not required to satisfy user requests the requests are quite lite and we can feel safer about sharing this resource amongst many users.
 
 
-### Jenkins
+## Jenkins
 
 To build and deploy the demo from Jenkins we can use the same `Makefile`.
 We can need to define Jenkins job parameters to match the environment variables used in the `Makefile` and then build targets it with the `-e` parameter to allow the environment variables to overwrite the file defaults.
