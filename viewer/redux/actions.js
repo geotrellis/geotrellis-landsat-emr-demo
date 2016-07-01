@@ -1,12 +1,12 @@
 import fetch from 'isomorphic-fetch';
 import shortid from 'shortid';
-import timeSeries from '../charts/timeSeries.js'
+import $ from 'jquery';
 
 var actions = {
   setLayerType: function(layerType) {
     return {
       type: 'SET_LAYER_TYPE',
-      layerType: layerType
+      layer: layerType
     };
   },
   registerTime: function(time, index) {
@@ -69,6 +69,12 @@ var actions = {
       error: error
     };
   },
+  setAnalysisLayer: function(layer) {
+    return {
+      type: 'SET_ANALYSIS_LAYER',
+      layer: layer
+    };
+  },
   fetchCatalog: function (url) {
     return dispatch => {
       dispatch(actions.loadCatalogRequest(url));
@@ -81,78 +87,30 @@ var actions = {
       error => dispatch(actions.loadCatalogFailure(url, error)));
     };
   },
-  fetchPolygonalSummary: function(polygonLayer, url, indexType) {
+  fetchPolygonalSummary: function(polygonLayer) {
     // type should be NDVI or NDWI
     // answer should be the computed mean value
     let singlePolySummaryTemplate = _.template("<h4>Average <%- type %>: <%- answer %></h4>");
 
     return dispatch => {
       console.log("Fetching polygonal summary", polygonLayer.toGeoJSON().geometry);
-      polygonLayer.bindPopup('<h4>Loading...</h4>');
+      //polygonLayer.bindPopup('<h4>Loading...</h4>');
       return fetch(url, {
         method: 'POST',
         body: JSON.stringify(polygonLayer.toGeoJSON().geometry)
       }).then( response => {
-        polygonLayer.closePopup()
-        polygonLayer.unbindPopup()
         response.json().then( summary => {
           summary.type = indexType;
           if (_.isNull(summary.answer)) {
-            polygonLayer.bindPopup('<h4>No data in query range</h4>');
-            polygonLayer.openPopup();
+            polygon.stats[polygonLayer.chartProps.ndi] = null;
           } else {
-            summary.answer = summary.answer.toFixed(4)
-            polygonLayer.bindPopup(singlePolySummaryTemplate(summary));
-            polygonLayer.openPopup();
+            polygon.stats[polygonLayer.chartProps.ndi] = summary.answer.toFixed(4);
           }
         });
       },
       error => {
       });
     };
-  },
-  fetchTimeSeries: function(pointLayer, url, ndi, latlng) {
-    var tsPopup = function(data, layer) { // data structure [{ date: <date>, value: <number> },]
-      let round = function(num) {
-            return +(Math.round(num + "e+2")  + "e-2");
-      };
-      let title = ndi == 'ndvi' ? `NDVI values at ${round(latlng.lat) + ', ' + round(latlng.lng) }` : `NDWI values at ${ round(latlng.lat) + ', ' + round(latlng.lng) }`;
-      let chartID = shortid.generate();
-      if (! _.isEmpty(data)) {
-        console.log("timeseries plotting with data: ", data);
-        layer.bindPopup('<div id="' + chartID + '" style="width: 400px; height: 200px;"><svg/></div>',
-                             { 'maxWidth': 450 });
-        layer.openPopup();
-        timeSeries(chartID, data, title);
-        layer.unbindPopup();
-      } else {
-        layer.bindPopup('<h4>No data in query range</h4>');
-        layer.openPopup();
-        layer.unbindPopup();
-      }
-    };
-
-    return dispatch => {
-      console.log("Fetching timeseries data", pointLayer.toGeoJSON().geometry);
-      pointLayer.bindPopup('<h4>Loading...</h4>');
-      pointLayer.openPopup();
-      return fetch(url).then( response => {
-        pointLayer.closePopup();
-        pointLayer.unbindPopup();
-        response.json().then( summary => {
-          var data = _.chain(summary.answer)
-            .map(function(d) { return { "date": new Date(d[0]), "value": d[1] }; })
-            .filter(function(d) { return _.isNull(d.value) ? false : true; })
-            .value();
-          tsPopup(data, pointLayer);
-          pointLayer.on('click', function() {
-            tsPopup(data, pointLayer);
-          });
-        });
-      },
-      error => {
-      });
-    }
   },
   showLayerWithBreaks: function(layerUrl, breaksUrl, layerId) {
     return dispatch => {

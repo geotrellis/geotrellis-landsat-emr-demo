@@ -3,59 +3,72 @@ import { render } from 'react-dom';
 import { Map, Marker, Popup, TileLayer, BaseTileLayer, GeoJson, FeatureGroup, Circle } from 'react-leaflet';
 import { EditControl } from 'react-leaflet-draw';
 import _ from 'lodash';
+import $ from 'jquery';
+import L from 'leaflet';
 import "leaflet/dist/leaflet.css";
 import 'leaflet-draw/dist/leaflet.draw.css';
+import './leaflet-icons.css';
+
 
 var Leaflet = React.createClass({
 
-  // Structure: /mean/{layer}/{zoom}/{ndwi/ndvi}?time=2015-06-29T00:00:00-0400'
   _onlayeradd: function(ev) {
-    let fgroup = ev.target;
-    let layer = ev.layer;
+    var fgroup = ev.target;
+    var addedLayer = ev.layer;
+    var setAnalysisLayer = this.props.setAnalysisLayer;
 
-    let root = this.props.rootUrl;
-    let zoom = layer._map._zoom;
-    let t0 = this.props.times[0];
-    let t1 = this.props.times[1];
-    let layerName = this.props.layerName;
-    let ndi = this.props.ndi;
-    let that = this;
-
-    let bindTimeSeriesData = function(marker) {
-      var latlng = marker._latlng;
-      var url = `${root}/series/${layerName}/${zoom}/${ndi}?lng=${latlng.lng}&lat=${latlng.lat}`;
-      that.props.fetchTimeSeries(marker, url, ndi, latlng);
+    // Initialize object for holding chart-rendering parameters
+    addedLayer.chartProps = {
+      rootURL: this.props.rootUrl,
+      times: this.props.times,
+      layerName: this.props.layerName,
+      comparisonType: this.props.layerType,
+      geomType: (_.isUndefined(addedLayer._latlngs) ? 'point' : 'polygon'),
+      selected: false
     };
 
-    let bindPolygonalSummaryData = function(polygon) {
-      if (that.props.layerType == 'singleLayer') {
-        var url = `${root}/mean/${layerName}/${zoom}/${ndi}?time=${t0}`;
-        that.props.fetchPolygonalSummary(layer, url, ndi);
+    // Initialize object for different types of statistic
+    addedLayer.stats = {};
+    addedLayer.comparisonStats = {};
+
+    let setMarkerSelection = function(marker) {
+      if (marker.chartProps.selected) {
+        marker.setIcon(L.divIcon({className: 'selected-marker'}));
       } else {
-        var url = `${root}/mean/${layerName}/${zoom}/${ndi}?time=${t0}&otherTime=${t1}`;
-        that.props.fetchPolygonalSummary(polygon, url, ndi + ' difference');
+        marker.setIcon(L.divIcon({className: 'unselected-marker'}));
       }
     };
 
-    // clean up our old geoms
-    _.chain(fgroup.getLayers())
-      .filter(function(l) { return  l._leaflet_id !== layer._leaflet_id; })
-      .each(function(l) { fgroup.removeLayer(l); })
-      .value();
+    let setPolySelection = function(poly) {
+      if (poly.chartProps.selected) {
+        poly.setStyle({ color: '#ffff64' });
+      } else {
+        poly.setStyle({ color: '#64c59d' });
+      }
+    };
 
-    // Get our data
-    if (layer._latlng) { // For marker/point specific logic
-      layer.dragging.enable();
-      layer.on('dragstart', function(ev) {
-        layer.unbindPopup();
-        layer.closePopup();
+    let selectLayer = function() {
+      let allLayers = fgroup.getLayers();
+
+      // deselect all other layers
+      _.chain(allLayers)
+        .filter(function(l) { return l !== addedLayer; })
+        .each(function(l) { l.chartProps.selected = false; })
+        .value();
+
+      addedLayer.chartProps.selected = true;
+      _.each(allLayers, function(l) {
+        if (l._latlng) {
+          setMarkerSelection(l);
+        } else {
+          setPolySelection(l);
+        }
       });
-      layer.on('dragend', function(ev) { bindTimeSeriesData(layer); });
-      bindTimeSeriesData(layer);
-    } else if (layer._latlngs) { // For polygonal summary (mean)
-      layer.setStyle({ color: ndi == 'ndvi' ? '#64c59d' : '#0066ff' });
-      bindPolygonalSummaryData(layer);
-    }
+
+      setAnalysisLayer(addedLayer);
+    };
+    addedLayer.on('click', function(ev) { selectLayer(); });
+    selectLayer();
   },
 
   _onDeleted: function(e) {
@@ -126,15 +139,16 @@ var Leaflet = React.createClass({
       );
     }
 
-    var polyOptions = {
+    let polyOptions = {
       stroke: true,
       weight: 3,
-      color: '#C0C0C0',
+      color: '#64c59d',
       fillOpacity: 0.15,
       fillColor: null // falls back on stroke color
-    }
+    };
 
-    console.log(vectorLayers);
+    let markerOptions = {
+    };
 
     return (
       <Map center ={[37.062, -121.530]} zoom={8} style={style} bounds={this.props.bounds}>
@@ -153,7 +167,7 @@ var Leaflet = React.createClass({
               circle: false,
               rectangle: false,
               polygon: { shapeOptions: polyOptions },
-              marker: true
+              marker: { icon: L.divIcon({className: 'unselected-marker'}) }
             }}
           />
         </FeatureGroup>
