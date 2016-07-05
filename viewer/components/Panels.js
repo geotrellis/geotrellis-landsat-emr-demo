@@ -4,9 +4,6 @@ import _ from 'lodash';
 import { PanelGroup, Panel, Input, Button, ButtonGroup, Form } from 'react-bootstrap';
 import SingleLayer from "./SingleLayer";
 import DiffLayer from "./DiffLayer";
-import DiffLayers from "./DiffLayers";
-import AverageByState from "./AverageByState";
-import AverageDiffByState from "./AverageDiffByState";
 import TimeSeries from "./charts/TimeSeries.js";
 import IndexComparison from "./charts/IndexComparison.js";
 
@@ -67,22 +64,6 @@ var Panels = React.createClass({
       }
     };
   },
-  showStateAverage: function(id) {
-    var self = this;
-    return function() {
-      if (id == self.state.activePane) { // if the message is from active pane, pass it on
-        self.props.showStateAverage.apply(this, arguments);
-      }
-    };
-  },
-  showStateDiffAverage: function(id) {
-    var self = this;
-    return function() {
-      if (id == self.state.activePane) { // if the message is from active pane, pass it on
-        self.props.showStateDiffAverage.apply(this, arguments);
-      }
-    };
-  },
   componentDidUpdate: function(prevProps, prevState) {
     // force map refresh if either the pane selection changed or auto-zoom was clicked
     // this must happen after state update in order for this.showLayerWithBreaks to pass the info
@@ -94,18 +75,11 @@ var Panels = React.createClass({
       case 2:
         this.refs.diff.updateMap();
         break;
-      case 3:
-        this.refs.layerDiff.updateMap();
-      case 4:
-        this.refs.averageByState.updateMap();
-      case 5:
-        this.refs.averageDiffByState.updateMap();
       }
     }
   },
   render: function() {
     let nonLandsatLayers = _.filter(this.props.layers, l => {return ! l.isLandsat});
-    let showNEXLayers = nonLandsatLayers.length > 0;
 
     var chartPanel;
     if (this.props.analysisLayer) {
