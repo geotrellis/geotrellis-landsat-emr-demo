@@ -99,7 +99,7 @@ object LandsatIngest extends Logging {
     // Our dataset can span UTM zones, we must reproject the tiles individually to common projection
     val maxZoom = 13 // We know this ahead of time based on Landsat resolution
     val destCRS = WebMercator
-    val resampleMethod = Bilinear
+    val resampleMethod = NearestNeighbor
     val layoutScheme = ZoomedLayoutScheme(destCRS, 256)
     val indexMethod = ZCurveKeyIndexMethod.byDay
     val reprojected = fetch(images, fetchMethod)

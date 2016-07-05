@@ -159,4 +159,11 @@ update-route53:
 --hosted-zone-id ${HOSTED_ZONE} \
 --change-batch "file://$(CURDIR)/scripts/upsert.json"
 
-.PHONY: local-ingest ingest local-tile-server update-route53
+get-logs:
+	@aws emr ssh --cluster-id $(CLUSTER_ID) --key-pair-file "${HOME}/${EC2_KEY}.pem" \
+		--command "rm -rf /tmp/spark-logs && hdfs dfs -copyToLocal /var/log/spark/apps /tmp/spark-logs"
+	@mkdir -p  logs/$(CLUSTER_ID)
+	@aws emr get --cluster-id $(CLUSTER_ID) --key-pair-file "${HOME}/${EC2_KEY}.pem" --src "/tmp/spark-logs/" --dest logs/$(CLUSTER_ID)
+
+
+.PHONY: local-ingest ingest local-tile-server update-route53 get-logs
