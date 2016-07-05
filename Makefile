@@ -165,5 +165,14 @@ get-logs:
 	@mkdir -p  logs/$(CLUSTER_ID)
 	@aws emr get --cluster-id $(CLUSTER_ID) --key-pair-file "${HOME}/${EC2_KEY}.pem" --src "/tmp/spark-logs/" --dest logs/$(CLUSTER_ID)
 
+update-site: viewer/site.tgz
+	@aws s3 cp viewer/site.tgz ${S3_URI}/
+	@aws emr ssh --cluster-id $(CLUSTER_ID) --key-pair-file "${HOME}/${EC2_KEY}.pem" \
+		--command "aws s3 cp ${S3_URI}/site.tgz /tmp/site.tgz && sudo tar -xzf /tmp/site.tgz -C /var/www/html"
+
+update-tile-server: ${SERVER_ASSEMBLY}
+	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
+	@aws emr ssh --cluster-id $(CLUSTER_ID) --key-pair-file "${HOME}/${EC2_KEY}.pem" \
+		--command "aws s3 cp ${S3_URI}/server-assembly-0.1.0.jar /tmp/tile-server.jar && (sudo stop tile-server; sudo start tile-server)"
 
 .PHONY: local-ingest ingest local-tile-server update-route53 get-logs
