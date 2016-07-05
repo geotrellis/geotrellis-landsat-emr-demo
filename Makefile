@@ -37,6 +37,7 @@ upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
 	@aws s3 cp viewer/site.tgz ${S3_URI}/
 	@aws s3 cp scripts/emr/bootstrap-demo.sh ${S3_URI}/
 	@aws s3 cp scripts/emr/bootstrap-geowave.sh ${S3_URI}/
+	@aws s3 cp scripts/emr/bootstrap-cassandra.sh ${S3_URI}/
 	@aws s3 cp scripts/emr/geowave-install-lib.sh ${S3_URI}/
 	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
 	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
@@ -55,6 +56,7 @@ Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,Instance
 Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE} \
 --bootstrap-actions \
 Name=BootstrapGeoWave,Path=${S3_URI}/bootstrap-geowave.sh \
+Name=BootstrapCassandra,Path=${S3_URI}/bootstrap-cassandra.sh \
 Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
 Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz] \
 | tee cluster-id.txt
@@ -82,8 +84,8 @@ ${S3_URI}/ingest-assembly-0.1.0.jar,\
 --endDate,${END_DATE},\
 --maxCloudCoverage,${MAX_CLOUD_COVERAGE},\
 --limit,${LIMIT},\
---output,accumulo,\
---params,\"instance=accumulo,table=tiles,user=root,password=secret\"\
+--output,cassandra,\
+--params,host=\`hostname\`\
 ] | cut -f2 | tee last-step-id.txt
 
 wait: INTERVAL:=60
@@ -158,5 +160,11 @@ update-route53:
 	aws route53 change-resource-record-sets \
 --hosted-zone-id ${HOSTED_ZONE} \
 --change-batch "file://$(CURDIR)/scripts/upsert.json"
+
+get-logs:
+	@aws emr ssh --cluster-id $(CLUSTER_ID) --key-pair-file "${HOME}/${EC2_KEY}.pem" \
+		--command "rm -rf /tmp/spark-logs && hdfs dfs -copyToLocal /var/log/spark/apps /tmp/spark-logs"
+	@mkdir -p  logs/$(CLUSTER_ID)
+	@aws emr get --cluster-id $(CLUSTER_ID) --key-pair-file "${HOME}/${EC2_KEY}.pem" --src "/tmp/spark-logs/" --dest logs/$(CLUSTER_ID)
 
 .PHONY: local-ingest ingest local-tile-server update-route53

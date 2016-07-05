@@ -105,6 +105,8 @@ object LandsatIngest extends Logging {
     val reprojected = fetch(images, fetchMethod)
     val tileLayerMetadata = calculateTileLayerMetadata(maxZoom, destCRS, images)
     logger.info("sTileLayerMetadata calculated: $tileLayerMetadata")
+    val partitioner = IndexPartitioner(tileLayerMetadata.bounds, indexMethod, reprojected.partitions.length)
+    val options = Tiler.Options(resampleMethod, partitioner)
     val tiledRdd = reprojected.tileToLayout(tileLayerMetadata, resampleMethod)
     val rdd = new ContextRDD(tiledRdd, tileLayerMetadata)
 
