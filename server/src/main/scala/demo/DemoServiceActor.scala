@@ -62,10 +62,14 @@ class DemoServiceActor(
   def timeseriesRoute = {
     import spray.json.DefaultJsonProtocol._
 
-    pathPrefix(Segment / IntNumber / Segment) { (layer, zoom, op) =>
-      parameters('lat, 'lng) { (lat, lng) =>
+    pathPrefix(Segment / Segment) { (layer, op) =>
+      parameters('lat, 'lng, 'zoom ?) { (lat, lng, zoomLevel) =>
         cors {
           complete { future {
+            val zoom = zoomLevel
+              .map(_.toInt)
+              .getOrElse(metadataReader.layerNamesToMaxZooms(layer))
+
             val catalog = readerSet.layerReader
             val layerId = LayerId(layer, zoom)
             val point = Point(lng.toDouble, lat.toDouble).reproject(LatLng, WebMercator)
@@ -106,12 +110,16 @@ class DemoServiceActor(
   def polygonalMeanRoute = {
     import spray.json.DefaultJsonProtocol._
 
-    pathPrefix(Segment / IntNumber / Segment) { (layer, zoom, op) =>
-      parameters('time, 'otherTime ?) { (time, otherTime) =>
+    pathPrefix(Segment / Segment) { (layer, op) =>
+      parameters('time, 'otherTime ?, 'zoom ?) { (time, otherTime, zoomLevel) =>
         cors {
           post {
             entity(as[String]) { json =>
               complete { future {
+                val zoom = zoomLevel
+                  .map(_.toInt)
+                  .getOrElse(metadataReader.layerNamesToMaxZooms(layer))
+
                 val catalog = readerSet.layerReader
                 val layerId = LayerId(layer, zoom)
 

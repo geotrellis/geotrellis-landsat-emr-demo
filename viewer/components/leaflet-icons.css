@@ -1,0 +1,15 @@
+.unselected-marker {
+  background-color: rgba(255, 255, 255, 0.5);
+  border: 2px solid rgb(100, 197, 157);
+  border-radius: 50%;
+  width: 15px;
+  height: 15px;
+}
+
+.selected-marker {
+  background-color: rgba(255, 255, 255, 0.5);
+  border: 3px solid rgb(255, 255, 100);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+}

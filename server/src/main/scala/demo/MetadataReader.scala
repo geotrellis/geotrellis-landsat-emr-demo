@@ -18,7 +18,7 @@ class MetadataReader(attributeStore: AttributeStore) {
     LayerMetadata(md, times)
   }
 
-  def layerNamesToZooms =
+  lazy val layerNamesToZooms =
     attributeStore.layerIds
       .groupBy(_.name)
       .map { case (name, layerIds) => (name, layerIds.map(_.zoom).sorted.toArray) }

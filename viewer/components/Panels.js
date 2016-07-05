@@ -7,6 +7,8 @@ import DiffLayer from "./DiffLayer";
 import DiffLayers from "./DiffLayers";
 import AverageByState from "./AverageByState";
 import AverageDiffByState from "./AverageDiffByState";
+import TimeSeries from "./charts/TimeSeries.js";
+import IndexComparison from "./charts/IndexComparison.js";
 
 var Panels = React.createClass({
   getInitialState: function () {
@@ -104,13 +106,38 @@ var Panels = React.createClass({
   render: function() {
     let nonLandsatLayers = _.filter(this.props.layers, l => {return ! l.isLandsat});
     let showNEXLayers = nonLandsatLayers.length > 0;
+
+    var chartPanel;
+    if (this.props.analysisLayer) {
+      if (this.props.analysisLayer.chartProps.geomType == 'point') {
+        chartPanel = (
+          <Panel header="Selected Data" eventKey="3" id={3}>
+            <ButtonGroup>
+              <Button active={this.props.ndi == 'ndvi'} onClick={() => this.props.setIndexType('ndvi')}>NDVI</Button>
+              <Button active={this.props.ndi == 'ndwi'} onClick={() => this.props.setIndexType('ndwi')}>NDWI</Button>
+            </ButtonGroup>
+            <TimeSeries point={this.props.analysisLayer}
+                        ndi={this.props.ndi} />
+          </Panel>)
+      } else {
+        chartPanel = (
+          <Panel header="Selected Data" eventKey="3" id={3}>
+            <ButtonGroup>
+              <Button active={this.props.ndi == 'ndvi'} onClick={() => this.props.setIndexType('ndvi')}>NDVI</Button>
+              <Button active={this.props.ndi == 'ndwi'} onClick={() => this.props.setIndexType('ndwi')}>NDWI</Button>
+            </ButtonGroup>
+            <IndexComparison poly={this.props.analysisLayer}
+                             ndi={this.props.ndi}
+                             times={this.props.times}
+                             layerType={this.props.layerType} />
+          </Panel>
+        );
+      }
+    }
+
     return (
     <div>
       <Input type="checkbox" label="Snap to layer extent" checked={this.state.autoZoom} onChange={this.handleAutoZoom} />
-      <ButtonGroup>
-        <Button active={this.props.ndi == 'ndvi'} onClick={() => this.props.setIndexType('ndvi')}>NDVI</Button>
-        <Button active={this.props.ndi == 'ndwi'} onClick={() => this.props.setIndexType('ndwi')}>NDWI</Button>
-      </ButtonGroup>
       <PanelGroup defaultActiveKey="1" accordion={true} onSelect={this.handlePaneSelect}>
         <Panel header="Single Layer" eventKey="1" id={1}>
           <SingleLayer
@@ -138,6 +165,8 @@ var Panels = React.createClass({
           />
         </Panel>
       </PanelGroup>
+
+      {chartPanel}
     </div>)
   }
 });

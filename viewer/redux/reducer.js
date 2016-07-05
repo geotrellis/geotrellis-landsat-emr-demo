@@ -1,9 +1,11 @@
 var reducer = function (state, action) {
   switch (action.type) {
+    case 'SET_ANALYSIS_LAYER':
+      return Object.assign({}, state, { analysisLayer: action.layer });
     case 'SET_NDI':
       return Object.assign({}, state, { ndi: action.ndi });
     case 'SET_LAYER_TYPE':
-      return Object.assign({}, state, { layerType: action.layerType });
+      return Object.assign({}, state, { layerType: action.layer });
     case 'REGISTER_TIME':
       var updatedTimes = state.times;
       updatedTimes[state.layerName][action.index] = action.time;
