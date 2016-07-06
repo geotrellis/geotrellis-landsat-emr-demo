@@ -116,21 +116,22 @@ proxy:
 ssh:
 	aws emr ssh --cluster-id ${CLUSTER_ID} --key-pair-file "${HOME}/${EC2_KEY}.pem"
 
-local-ingest: CATALOG=catalog
-local-ingest: LIMIT=9999
+local-ingest: CATALOG=/Volumes/Transcend/catalog
+local-ingest: LIMIT=3
 local-ingest: ${INGEST_ASSEMBLY}
 	@if [ -z $$START_DATE ]; then echo "START_DATE is not set" && exit 1; fi
 	@if [ -z $$END_DATE ]; then echo "END_DATE is not set" && exit 1; fi
 
-	spark-submit --name "${NAME} Ingest" --master "local[4]" --driver-memory 4G \
+	spark-submit --name "${NAME} Ingest" --master "local[4]" --driver-memory 6G \
 ${INGEST_ASSEMBLY} \
+--cache /Volumes/Transcend/catalog-cache \
 --layerName landsat \
 --bbox ${BBOX} --startDate ${START_DATE} --endDate ${END_DATE} \
 --output file \
 --params path=${CATALOG} \
 --limit ${LIMIT}
 
-local-tile-server: CATALOG=catalog
+local-tile-server: CATALOG=/Volumes/Transcend/catalog3
 local-tile-server:
 	spark-submit --name "${NAME} Service" --master "local" --driver-memory 1G \
 ${SERVER_ASSEMBLY} local ${CATALOG}

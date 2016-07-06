@@ -132,7 +132,7 @@ object LandsatIngestMain extends Logging {
   def main(args: Array[String]): Unit = {
     logger.info(s"Arguments: ${args.toSeq}")
 
-    implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
+    implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true).set("spark.local.dir", "/Volumes/Transcend/spark"))
     val config = Config.parse(args)
     logger.info(s"Config: $config")
 
