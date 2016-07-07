@@ -16,7 +16,7 @@ package object landsat {
   implicit class withEtlJobsLandsatMethods(val self: EtlJob) extends EtlJobsLandsatMethods
 
   private[landsat] def getAttributeStore(job: EtlJob): AttributeStore = {
-    job.config.ingestType.output match {
+    job.output.ingestOutputType.output match {
       case AccumuloType => {
         AccumuloAttributeStore(job.outputCredentials.collect { case credentials: Accumulo =>
           AccumuloInstance(

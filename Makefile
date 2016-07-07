@@ -120,7 +120,8 @@ local-ingest: ${INGEST_ASSEMBLY}
 	spark-submit --name "${NAME} Ingest" --master "local[4]" --driver-memory 4G \
 ${INGEST_ASSEMBLY} \
 --credentials "file:///${PWD}/conf/credentials.json" \
---datasets "file://${PWD}/conf/datasets.json"
+--datasets "file://${PWD}/conf/datasets.json" \
+--output "file://${PWD}/conf/output.json"
 
 local-tile-server: CATALOG=catalog
 local-tile-server:

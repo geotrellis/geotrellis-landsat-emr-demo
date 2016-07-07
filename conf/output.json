@@ -1,0 +1,6 @@
+{
+  "ingestOutputType": {
+    "output": "file"
+  },
+  "path": "catalog"
+}

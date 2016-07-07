@@ -29,7 +29,7 @@ object LandsatIngest extends Logging {
   )(implicit sc: SparkContext): Unit = {
     // Our dataset can span UTM zones, we must reproject the tiles individually to common projection
     val maxZoom = 13 // We know this ahead of time based on Landsat resolution
-    val config = job.config
+    val config = job.input
     val layerName = config.name
     val destCRS = config.ingestOptions.getCrs.get
     val resampleMethod = config.ingestOptions.resampleMethod
@@ -69,8 +69,8 @@ object LandsatIngestMain extends Logging {
 
       val outputPlugin = etl.combinedModule
         .findSubclassOf[OutputPlugin[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]]]
-        .find { _.suitableFor(job.config.ingestType.output.name) }
-        .getOrElse(sys.error(s"Unable to find output module of type '${job.config.ingestType.output.name}'"))
+        .find { _.suitableFor(job.output.ingestOutputType.output.name) }
+        .getOrElse(sys.error(s"Unable to find output module of type '${job.output.ingestOutputType.output.name}'"))
 
       /* TODO if the layer exists the ingest will fail, we need to use layer updater*/
       LandsatIngest.run(

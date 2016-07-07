@@ -1,19 +1,15 @@
 [
   {
-    "name":"landsat",
-    "ingestType":{
-      "format":"geotiff",
-      "output":"file",
-      "input":"landsat"
+    "name": "landsat",
+    "ingestType": {
+      "format": "geotiff",
+      "input": "landsat"
     },
-    "path":{
-      "input":"--cache catalog-cache --bandsWanted 4,3,2,5,QA --bbox -43.9883,-22.3221,-42.7695,-21.0435 --startDate 2015-06-01 --endDate 2015-06-10 --limit 1",
-      "output":"catalog"
-    },
-    "cache":"NONE",
-    "ingestOptions":{
+    "path": "--cache catalog-cache --bandsWanted 4,3,2,5,QA --bbox -43.9883,-22.3221,-42.7695,-21.0435 --startDate 2015-06-01 --endDate 2015-06-10 --limit 1",
+    "cache": "NONE",
+    "ingestOptions": {
       "reprojectMethod": "buffered",
-      "cellSize":{
+      "cellSize": {
         "width": 256.0,
         "height": 256.0
       },
@@ -21,7 +17,7 @@
       "pyramid": true,
       "resampleMethod": "bilinear",
       "keyIndexMethod": {
-        "type":"zorder",
+        "type": "zorder",
         "temporalResolution": 86400000
       },
       "layoutScheme": "zoomed",

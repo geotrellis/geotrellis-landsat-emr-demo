@@ -58,7 +58,7 @@ trait EtlJobsLandsatMethods {
       }
     }
 
-  def landsatInput = nextOption(Map(), self.config.path.input.split(" ").toList)
+  def landsatInput = nextOption(Map(), self.input.path.split(" ").toList)
 
   def cacheHook: IOHook = landsatInput.get('cache).map(new File(_)) match {
     case Some(dir) => IOHook.localCache(dir)
