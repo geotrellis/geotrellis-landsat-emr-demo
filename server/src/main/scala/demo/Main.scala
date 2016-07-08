@@ -37,9 +37,6 @@ import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 object Main {
-  /** Allows an alternate execution path to run some testing */
-  val TEST = false
-
   val dateTimeFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ")
 
   /** Usage:
@@ -64,16 +61,9 @@ object Main {
         val localCatalog = args(1)
 
         new FileReaderSet(localCatalog)
-      } else if(args(0) == "custom-local"){
-        val instanceName = "gis"
-        val zooKeeper = "localhost"
-        val user = "root"
-        val password = new PasswordToken("secret")
-        val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
-
-        new AccumuloReaderSet(instance)
-      } else if(args(0) == "hdfs"){
+     } else if(args(0) == "hdfs"){
         val path = new org.apache.hadoop.fs.Path(args(1))
+
         new HadoopReaderSet(path)
       } else if(args(0) == "s3"){
         val bucket = args(1)
@@ -88,33 +78,17 @@ object Main {
         val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
 
         new AccumuloReaderSet(instance)
-      } else if(args(0) == "custom-accumulo") {
-        val instanceName = args(1)
-        val zooKeeper = args(2)
-        val user = args(3)
-        val password = new PasswordToken(args(4))
-        val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
-
-        new AccumuloReaderSet(instance)
-      } else {
+     } else {
         sys.error(s"Unknown catalog type ${args(0)}")
       }
 
-    if(TEST) {
-      try {
-        RunTest(readerSet)
-      } finally {
-        sc.stop
-      }
-    } else {
-      implicit val system = akka.actor.ActorSystem("demo-system")
+    implicit val system = akka.actor.ActorSystem("demo-system")
 
-      // create and start our service actor
-      val service =
-        system.actorOf(Props(classOf[DemoServiceActor], readerSet, sc), "demo")
+    // create and start our service actor
+    val service =
+      system.actorOf(Props(classOf[DemoServiceActor], readerSet, sc), "demo")
 
-      // start a new HTTP server on port 8088 with our service actor as the handler
-      IO(Http) ! Http.Bind(service, "0.0.0.0", 8899)
-    }
+    // start a new HTTP server on port 8899 with our service actor as the handler
+    IO(Http) ! Http.Bind(service, "0.0.0.0", 8899)
   }
 }

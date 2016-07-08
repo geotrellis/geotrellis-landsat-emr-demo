@@ -8,11 +8,9 @@ connectInput in run := true
 
 libraryDependencies ++= Seq(
   "com.azavea" %% "scala-landsat-util" % "0.2.0-SNAPSHOT",
-  "com.azavea.geotrellis" %% "geotrellis-spark" % Version.geotrellis,
-  "com.azavea.geotrellis" %% "geotrellis-s3" % Version.geotrellis,
-  "com.azavea.geotrellis" %% "geotrellis-accumulo" % Version.geotrellis,
   "com.azavea.geotrellis" %% "geotrellis-spark-etl" % Version.geotrellis,
   "org.apache.spark"      %% "spark-core" % "1.5.2" % "provided",
+  "com.azavea.geotrellis" %% "geotrellis-spark-testkit" % Version.geotrellis % "test",
   "org.scalatest"         %%  "scalatest" % "2.2.0" % "test"
 )
 
@@ -25,4 +23,3 @@ assemblyMergeStrategy in assembly := {
   case "META-INF/ECLIPSEF.SF" => MergeStrategy.discard
   case _ => MergeStrategy.first
 }
-
