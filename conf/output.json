@@ -1,6 +1,20 @@
 {
-  "ingestOutputType": {
-    "output": "file"
+  "backend": {
+    "type": "file",
+    "path": "catalog"
   },
-  "path": "catalog"
+  "reprojectMethod": "buffered",
+  "cellSize": {
+    "width": 256.0,
+    "height": 256.0
+  },
+  "tileSize": 256,
+  "pyramid": true,
+  "resampleMethod": "bilinear",
+  "keyIndexMethod": {
+    "type": "zorder",
+    "temporalResolution": 86400000
+  },
+  "layoutScheme": "zoomed",
+  "crs": "EPSG:3857"
 }

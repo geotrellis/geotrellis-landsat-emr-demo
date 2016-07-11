@@ -29,11 +29,11 @@ object LandsatIngest extends Logging {
   )(implicit sc: SparkContext): Unit = {
     // Our dataset can span UTM zones, we must reproject the tiles individually to common projection
     val maxZoom = 13 // We know this ahead of time based on Landsat resolution
-    val config = job.input
-    val layerName = config.name
-    val destCRS = config.ingestOptions.getCrs.get
-    val resampleMethod = config.ingestOptions.resampleMethod
-    val layoutScheme = config.ingestOptions.getLayoutScheme
+    val output = job.conf.output
+    val layerName = job.conf.input.name
+    val destCRS = output.getCrs.get
+    val resampleMethod = output.resampleMethod
+    val layoutScheme = output.getLayoutScheme
     val tileLayerMetadata = inputPlugin.calculateTileLayerMetadata(maxZoom, destCRS)
     logger.info(s"TileLayerMetadata calculated: $tileLayerMetadata")
     val tiledRdd = reprojected.tileToLayout(tileLayerMetadata, resampleMethod)
@@ -62,15 +62,16 @@ object LandsatIngestMain extends Logging {
   def main(args: Array[String]): Unit = {
     logger.info(s"Arguments: ${args.toSeq}")
     implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
-    EtlConf(args).getEtlJobs.foreach { job =>
+    EtlConf(args) foreach { conf =>
+      val job = EtlJob(conf)
       val etl = Etl(job, Etl.defaultModules :+ LandsatModule)
       val inputPlugin = new TemporalMultibandLandsatInput()
       val sourceTiles = inputPlugin(job)
 
       val outputPlugin = etl.combinedModule
         .findSubclassOf[OutputPlugin[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]]]
-        .find { _.suitableFor(job.output.ingestOutputType.output.name) }
-        .getOrElse(sys.error(s"Unable to find output module of type '${job.output.ingestOutputType.output.name}'"))
+        .find { _.suitableFor(job.conf.output.backend.`type`.name) }
+        .getOrElse(sys.error(s"Unable to find output module of type '${job.conf.output.backend.`type`}'"))
 
       /* TODO if the layer exists the ingest will fail, we need to use layer updater*/
       LandsatIngest.run(

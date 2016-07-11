@@ -4,8 +4,8 @@ import geotrellis.spark.etl.EtlJob
 import geotrellis.spark.etl.config._
 import geotrellis.spark.io.AttributeStore
 import geotrellis.spark.io.hadoop._
-import geotrellis.spark.io.accumulo.{AccumuloAttributeStore, AccumuloInstance}
-import geotrellis.spark.io.cassandra.{BaseCassandraInstance, CassandraAttributeStore}
+import geotrellis.spark.io.accumulo.AccumuloAttributeStore
+import geotrellis.spark.io.cassandra.CassandraAttributeStore
 import geotrellis.spark.io.hadoop.HadoopAttributeStore
 import geotrellis.spark.io.s3.S3AttributeStore
 
@@ -16,30 +16,15 @@ package object landsat {
   implicit class withEtlJobsLandsatMethods(val self: EtlJob) extends EtlJobsLandsatMethods
 
   private[landsat] def getAttributeStore(job: EtlJob): AttributeStore = {
-    job.output.ingestOutputType.output match {
+    job.conf.output.backend.`type` match {
       case AccumuloType => {
-        AccumuloAttributeStore(job.outputCredentials.collect { case credentials: Accumulo =>
-          AccumuloInstance(
-            credentials.instance,
-            credentials.zookeepers,
-            credentials.user,
-            credentials.token
-          )
+        AccumuloAttributeStore(job.conf.outputProfile.collect { case ap: AccumuloProfile =>
+          ap.getInstance
         }.get.connector)
       }
       case CassandraType => {
-        CassandraAttributeStore(job.outputCredentials.collect {
-          case credentials: Cassandra =>
-            BaseCassandraInstance(
-              credentials.hosts.split(","),
-              credentials.user,
-              credentials.password,
-              credentials.replicationStrategy,
-              credentials.replicationFactor,
-              credentials.localDc,
-              credentials.usedHostsPerRemoteDc,
-              credentials.allowRemoteDCsForLocalConsistencyLevel
-            )
+        CassandraAttributeStore(job.conf.outputProfile.collect { case cp: CassandraProfile =>
+            cp.getInstance
         }.get)
       }
       case HadoopType | FileType =>

@@ -1,0 +1,24 @@
+{
+  "backend-profiles": [
+    {
+      "name": "name",
+      "type": "accumulo",
+      "zookeepers": "zookeepers",
+      "instance": "instance",
+      "user": "user",
+      "password": "password"
+    },
+    {
+      "name": "name",
+      "type": "cassandra",
+      "allowRemoteDCsForLocalConsistencyLevel": false,
+      "localDc": "datacenter1",
+      "usedHostsPerRemoteDc": 0,
+      "hosts": "hosts",
+      "replicationStrategy": "SimpleStrategy",
+      "replicationFactor": 1,
+      "user": "user",
+      "password": "password"
+    }
+  ]
+}

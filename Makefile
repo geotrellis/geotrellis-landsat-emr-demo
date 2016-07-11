@@ -119,8 +119,8 @@ ssh:
 local-ingest: ${INGEST_ASSEMBLY}
 	spark-submit --name "${NAME} Ingest" --master "local[4]" --driver-memory 4G \
 ${INGEST_ASSEMBLY} \
---credentials "file:///${PWD}/conf/credentials.json" \
---datasets "file://${PWD}/conf/datasets.json" \
+--backend-profiles "file:///${PWD}/conf/backend-profiles.json" \
+--input "file://${PWD}/conf/input.json" \
 --output "file://${PWD}/conf/output.json"
 
 local-tile-server: CATALOG=catalog
