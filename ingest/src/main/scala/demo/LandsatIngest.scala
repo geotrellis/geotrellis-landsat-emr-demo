@@ -1,6 +1,9 @@
 package demo
 
-import com.github.nscala_time.time.Imports._
+import avro._
+import merge._
+import prototype._
+
 import geotrellis.vector._
 import geotrellis.vector.io._
 import geotrellis.raster._
@@ -14,23 +17,20 @@ import geotrellis.spark.io.s3._
 import geotrellis.spark.io.file._
 import geotrellis.spark.io.accumulo._
 import geotrellis.spark.partition._
+import geotrellis.spark.ingest._
 import geotrellis.spark.util._
 import geotrellis.spark.tiling._
 import geotrellis.spark.pyramid._
 import geotrellis.proj4._
-import geotrellis.spark.ingest._
-import com.azavea.landsatutil.{S3Client => lsS3Client, _}
+import com.azavea.landsatutil._
 
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 import org.apache.spark._
 import org.apache.spark.rdd._
-import org.apache.accumulo.core.client.security.tokens._
+import com.github.nscala_time.time.Imports._
 
 import scala.util.Try
-import java.net._
-import java.io._
-import org.apache.commons.io.IOUtils
 
 object LandsatIngest extends Logging {
 
@@ -70,7 +70,7 @@ object LandsatIngest extends Logging {
   def fetch(
     images: Seq[LandsatImage],
     source: LandsatImage => Option[ProjectedRaster[MultibandTile]]
-  )(implicit sc: SparkContext): RDD[(TemporalProjectedExtent, MultibandTile)] = {
+  )(implicit sc: SparkContext): RDD[(TemporalProjectedExtent, TileFeature[MultibandTile, MTL])] = {
     sc.parallelize(images, images.length) // each image gets its own partition
       .mapPartitions({ iter =>
         for {
@@ -81,7 +81,7 @@ object LandsatIngest extends Logging {
           layoutRows = math.ceil(reprojected.rows.toDouble / 256).toInt
           chunk <- reprojected.split(TileLayout(layoutCols, layoutRows, 256, 256), Split.Options(cropped = false, extend = false))
         } yield {
-          TemporalProjectedExtent(chunk.extent, WebMercator, img.aquisitionDate) -> chunk.tile
+          TemporalProjectedExtent(chunk.extent, WebMercator, img.aquisitionDate) -> TileFeature(chunk.tile, img.getMtlFromS3())
         }
       }, preservesPartitioning = true)
       .repartition(images.length * 16) // Break up each scene into 16 partitions
@@ -132,7 +132,7 @@ object LandsatIngestMain extends Logging {
   def main(args: Array[String]): Unit = {
     logger.info(s"Arguments: ${args.toSeq}")
 
-    implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
+    implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true).set("spark.local.dir", "/data/spark"))
     val config = Config.parse(args)
     logger.info(s"Config: $config")
 
