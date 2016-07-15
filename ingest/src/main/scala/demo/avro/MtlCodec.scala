@@ -5,6 +5,9 @@ import geotrellis.spark.io.avro.AvroRecordCodec
 import org.apache.avro.SchemaBuilder
 import org.apache.avro.generic.GenericRecord
 
+import scala.collection.JavaConversions._
+import scala.util.{Failure, Success, Try}
+
 trait MtlCodec {
   implicit def mtlGroupCodec: AvroRecordCodec[MtlGroup] = new AvroRecordCodec[MtlGroup] {
     def schema = SchemaBuilder
@@ -16,11 +19,16 @@ trait MtlCodec {
 
     def encode(mgroup: MtlGroup, rec: GenericRecord) = {
       rec.put("name", mgroup.name)
-      rec.put("fields", mgroup.fields.map { case (k, v) => k -> v.toString })
+      rec.put("fields", mapAsJavaMap(mgroup.fields.map { case (k, v) =>
+        k -> (Try { v.toString } match {
+          case Success(s) => s
+          case Failure(e) => ""
+        })
+      }))
     }
 
     def decode(rec: GenericRecord) =
-      new MtlGroup(rec.get("name").asInstanceOf[String], rec.get("fields").asInstanceOf[Map[String, String]])
+      new MtlGroup(rec.get("name").asInstanceOf[String], rec.get("fields").asInstanceOf[java.util.Map[java.lang.String, java.lang.String]].toMap)
   }
 
   implicit def mtlCodec: AvroRecordCodec[MTL] = new AvroRecordCodec[MTL] {
@@ -31,9 +39,9 @@ trait MtlCodec {
       .endRecord()
 
     def encode(mtl: MTL, rec: GenericRecord) =
-      rec.put("group", mtl.group)
+      rec.put("group", mapAsJavaMap(mtl.group.map { case (k, v) => k -> mtlGroupCodec.encode(v) }))
 
     def decode(rec: GenericRecord) =
-      new MTL(rec.get("group").asInstanceOf[Map[String, MtlGroup]])
+      new MTL(rec.get("group").asInstanceOf[java.util.Map[java.lang.String, MtlGroup]].toMap)
   }
 }
