@@ -1,23 +1,17 @@
 package demo
 
-import avro._
-import merge._
-import prototype._
+import demo.avro._
+import demo.merge._
+import demo.prototype._
 
 import geotrellis.vector._
 import geotrellis.vector.io._
 import geotrellis.raster._
 import geotrellis.raster.split._
-import geotrellis.raster.io.geotiff.reader._
 import geotrellis.raster.resample._
 import geotrellis.spark._
 import geotrellis.spark.io._
 import geotrellis.spark.io.index._
-import geotrellis.spark.io.s3._
-import geotrellis.spark.io.file._
-import geotrellis.spark.io.accumulo._
-import geotrellis.spark.partition._
-import geotrellis.spark.ingest._
 import geotrellis.spark.util._
 import geotrellis.spark.tiling._
 import geotrellis.spark.pyramid._
@@ -25,7 +19,6 @@ import geotrellis.proj4._
 import com.azavea.landsatutil._
 
 import spray.json.DefaultJsonProtocol._
-import spray.json._
 import org.apache.spark._
 import org.apache.spark.rdd._
 import com.github.nscala_time.time.Imports._

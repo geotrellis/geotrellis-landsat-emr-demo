@@ -28,8 +28,13 @@ lazy val commonSettings = Seq(
 lazy val root = Project("demo", file("."))
   .aggregate(ingest, server)
 
+lazy val core = Project("core", file("core"))
+  .settings(commonSettings: _*)
+
 lazy val ingest = Project("ingest", file("ingest"))
   .settings(commonSettings: _*)
+  .dependsOn(core)
 
 lazy val server = Project("server", file("server"))
   .settings(commonSettings: _*)
+  .dependsOn(core)

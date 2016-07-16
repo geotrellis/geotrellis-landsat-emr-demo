@@ -1,7 +1,6 @@
-name := "server"
+name := "core"
 scalaVersion := Version.scala
-javaOptions += "-Xmx4G"
-scalacOptions += "-Yfundep-materialization"
+javaOptions += "-Xmx8G"
 
 fork in run := true
 
@@ -12,9 +11,9 @@ libraryDependencies ++= Seq(
   "com.azavea.geotrellis" %% "geotrellis-spark" % Version.geotrellis,
   "com.azavea.geotrellis" %% "geotrellis-s3" % Version.geotrellis,
   "com.azavea.geotrellis" %% "geotrellis-accumulo" % Version.geotrellis,
+  "com.azavea.geotrellis" %% "geotrellis-spark-testkit" % Version.geotrellis % "test",
   "org.apache.spark" %% "spark-core" % "1.5.2" % "provided",
-  Dependencies.sprayRouting,
-  Dependencies.sprayCan,
+  "com.github.scopt" %% "scopt" % "3.3.0",
   "org.scalatest"       %%  "scalatest"      % "2.2.0" % "test"
 )
 
@@ -27,5 +26,3 @@ assemblyMergeStrategy in assembly := {
   case "META-INF/ECLIPSEF.SF" => MergeStrategy.discard
   case _ => MergeStrategy.first
 }
-
-Revolver.settings
