@@ -14,9 +14,9 @@ object Dependencies {
   // or else MethodNotFound pain will ensue.
   val sprayRouting =
     if(sprayVersion == "1.2.3") {
-      "io.spray"        % "spray-routing" % sprayVersion
+      "io.spray"        % "spray-routing-shapeless2" % sprayVersion
     } else {
-      "io.spray"        %% "spray-routing" % sprayVersion
+      "io.spray"        %% "spray-routing-shapeless2" % sprayVersion excludeAll ExclusionRule(organization = "com.chuusai")
     }
 
   val sprayCan =

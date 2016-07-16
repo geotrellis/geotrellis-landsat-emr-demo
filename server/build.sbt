@@ -1,12 +1,14 @@
 name := "server"
 scalaVersion := Version.scala
 javaOptions += "-Xmx4G"
+scalacOptions += "-Yfundep-materialization"
 
 fork in run := true
 
 connectInput in run := true
 
 libraryDependencies ++= Seq(
+  "com.azavea" %% "scala-landsat-util" % "0.2.0-SNAPSHOT",
   "com.azavea.geotrellis" %% "geotrellis-spark" % Version.geotrellis,
   "com.azavea.geotrellis" %% "geotrellis-s3" % Version.geotrellis,
   "com.azavea.geotrellis" %% "geotrellis-accumulo" % Version.geotrellis,
