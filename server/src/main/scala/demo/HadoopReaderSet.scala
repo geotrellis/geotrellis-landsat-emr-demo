@@ -2,7 +2,7 @@ package demo
 
 import demo.avro._
 
-import com.azavea.landsatutil.MTL
+import com.azavea.landsatutil.{MTL, MtlArray}
 import geotrellis.raster._
 import geotrellis.spark._
 import geotrellis.spark.io._
@@ -11,6 +11,7 @@ import geotrellis.spark.io.json._
 import geotrellis.spark.io.index._
 import geotrellis.spark.io.avro._
 import geotrellis.spark.io.avro.codecs._
+
 import org.apache.hadoop.fs._
 import org.apache.avro.Schema
 import org.apache.spark._
@@ -21,6 +22,6 @@ class HadoopReaderSet(path: Path)(implicit sc: SparkContext) extends ReaderSet {
   val attributeStore = HadoopAttributeStore(path)
   val metadataReader = new MetadataReader(attributeStore)
   val layerReader = HadoopLayerReader(attributeStore)
-  val singleBandTileReader = new TileReader[SpaceTimeKey, TileFeature[Tile, MTL]](HadoopValueReader(path))
-  val multiBandTileReader = new TileReader[SpaceTimeKey, TileFeature[MultibandTile, MTL]](HadoopValueReader(path))
+  val singleBandTileReader = new TileReader[SpaceTimeKey, TileFeature[Tile, Array[MTL]]](HadoopValueReader(path))
+  val multiBandTileReader = new TileReader[SpaceTimeKey, TileFeature[MultibandTile, Array[MTL]]](HadoopValueReader(path))
 }

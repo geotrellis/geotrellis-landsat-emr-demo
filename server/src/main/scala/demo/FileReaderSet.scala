@@ -2,7 +2,7 @@ package demo
 
 import demo.avro._
 
-import com.azavea.landsatutil.MTL
+import com.azavea.landsatutil.{MTL, MtlArray}
 import geotrellis.raster._
 import geotrellis.spark._
 import geotrellis.spark.io._
@@ -20,6 +20,6 @@ class FileReaderSet(path: String)(implicit sc: SparkContext) extends ReaderSet {
   val attributeStore = FileAttributeStore(path)
   val metadataReader = new MetadataReader(attributeStore)
   val layerReader = FileLayerReader(attributeStore)
-  val singleBandTileReader = new TileReader[SpaceTimeKey, TileFeature[Tile, MTL]](FileValueReader(path))
-  val multiBandTileReader = new TileReader[SpaceTimeKey, TileFeature[MultibandTile, MTL]](FileValueReader(path))
+  val singleBandTileReader = new TileReader[SpaceTimeKey, TileFeature[Tile, Array[MTL]]](FileValueReader(path))
+  val multiBandTileReader = new TileReader[SpaceTimeKey, TileFeature[MultibandTile, Array[MTL]]](FileValueReader(path))
 }

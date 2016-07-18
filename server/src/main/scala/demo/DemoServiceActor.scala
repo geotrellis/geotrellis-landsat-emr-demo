@@ -68,7 +68,7 @@ class DemoServiceActor(
               case _ => sys.error(s"UNKNOWN OPERATION")
             }
 
-            val rdd = catalog.query[SpaceTimeKey, TileFeature[MultibandTile, MTL], TileLayerMetadata[SpaceTimeKey]](layerId)
+            val rdd = catalog.query[SpaceTimeKey, TileFeature[MultibandTile, Array[MTL]], TileLayerMetadata[SpaceTimeKey]](layerId)
               .where(Intersects(point.envelope))
               .result
 
@@ -129,7 +129,7 @@ class DemoServiceActor(
                 }
 
                 val rdd1 = catalog
-                  .query[SpaceTimeKey, TileFeature[MultibandTile, MTL], TileLayerMetadata[SpaceTimeKey]](layerId)
+                  .query[SpaceTimeKey, TileFeature[MultibandTile, Array[MTL]], TileLayerMetadata[SpaceTimeKey]](layerId)
                   .where(At(DateTime.parse(time, dateTimeFormat)))
                   .where(Intersects(extent))
                   .result
@@ -139,7 +139,7 @@ class DemoServiceActor(
                   case None => 0.0
                   case Some(otherTime) =>
                     val rdd2 = catalog
-                      .query[SpaceTimeKey, TileFeature[MultibandTile, MTL], TileLayerMetadata[SpaceTimeKey]](layerId)
+                      .query[SpaceTimeKey, TileFeature[MultibandTile, Array[MTL]], TileLayerMetadata[SpaceTimeKey]](layerId)
                       .where(At(DateTime.parse(otherTime, dateTimeFormat)))
                       .where(Intersects(extent))
                       .result

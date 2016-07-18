@@ -6,6 +6,7 @@ import org.apache.avro.SchemaBuilder
 import org.apache.avro.generic.GenericRecord
 
 import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
 trait MtlCodec {
@@ -43,5 +44,22 @@ trait MtlCodec {
 
     def decode(rec: GenericRecord) =
       new MTL(rec.get("group").asInstanceOf[java.util.Map[java.lang.String, MtlGroup]].toMap)
+  }
+
+  implicit def mtlArrayCodec: AvroRecordCodec[Array[MTL]] = new AvroRecordCodec[Array[MTL]] {
+    def schema = SchemaBuilder
+      .record("MtlArray").namespace("com.azavea.landsatutil")
+      .fields()
+      .name("array").`type`().array().items().`type`(mtlCodec.schema).noDefault()
+      .endRecord()
+
+    def encode(mtl: Array[MTL], rec: GenericRecord) =
+      rec.put("array", java.util.Arrays.asList(mtl.array.map(mtlCodec.encode(_)): _*))
+
+    def decode(rec: GenericRecord) =
+      rec.get("array")
+        .asInstanceOf[java.util.Collection[MTL]]
+        .asScala
+        .toArray[MTL]
   }
 }

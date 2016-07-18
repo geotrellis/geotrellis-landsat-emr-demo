@@ -13,7 +13,6 @@ import geotrellis.spark.io.avro._
 import geotrellis.spark.tiling._
 import com.github.nscala_time.time.Imports._
 import spray.json._
-import java.util.concurrent.ConcurrentHashMap
 
 import com.azavea.landsatutil.MTL
 
@@ -24,11 +23,11 @@ trait ReaderSet {
   def attributeStore: AttributeStore
   def metadataReader: MetadataReader
   def layerReader: FilteringLayerReader[LayerId]
-  def singleBandTileReader: TileReader[SpaceTimeKey, TileFeature[Tile, MTL]]
-  def multiBandTileReader: TileReader[SpaceTimeKey, TileFeature[MultibandTile, MTL]]
+  def singleBandTileReader: TileReader[SpaceTimeKey, TileFeature[Tile, Array[MTL]]]
+  def multiBandTileReader: TileReader[SpaceTimeKey, TileFeature[MultibandTile, Array[MTL]]]
 
   /** Do "overzooming", where we resample lower zoom level tiles to serve out higher zoom level tiles. */
-  def readSinglebandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[TileFeature[Tile, MTL]] =
+  def readSinglebandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[TileFeature[Tile, Array[MTL]]] =
     try {
       val z = metadataReader.layerNamesToMaxZooms(layer)
 
@@ -58,7 +57,7 @@ trait ReaderSet {
     }
 
   /** Do "overzooming", where we resample lower zoom level tiles to serve out higher zoom level tiles. */
-  def readMultibandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[TileFeature[MultibandTile, MTL]] =
+  def readMultibandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[TileFeature[MultibandTile, Array[MTL]]] =
     try {
       val z = metadataReader.layerNamesToMaxZooms(layer)
 

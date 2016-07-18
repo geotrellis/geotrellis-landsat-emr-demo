@@ -10,4 +10,10 @@ package object prototype extends Serializable {
 
   implicit class withMultibandTileFeaturePrototypeMethods(val self: TileFeature[MultibandTile, MTL])
     extends MethodExtensions[TileFeature[MultibandTile, MTL]] with MultibandTileFeaturePrototypeMethods
+
+  implicit class withSinglebandTileFeatureMtlArrayPrototypeMethods(val self: TileFeature[Tile, Array[MTL]])
+    extends MethodExtensions[TileFeature[Tile, Array[MTL]]] with SinglebandTileFeatureMtlArrayPrototypeMethods
+
+  implicit class withMultibandTileFeatureMtlArrayPrototypeMethods(val self: TileFeature[MultibandTile, Array[MTL]])
+    extends MethodExtensions[TileFeature[MultibandTile, Array[MTL]]] with MultibandTileFeatureMtlArrayPrototypeMethods
 }

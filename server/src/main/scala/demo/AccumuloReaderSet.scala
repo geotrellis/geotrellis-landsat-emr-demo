@@ -2,7 +2,7 @@ package demo
 
 import demo.avro._
 
-import com.azavea.landsatutil.MTL
+import com.azavea.landsatutil.{MTL, MtlArray}
 import geotrellis.raster._
 import geotrellis.spark._
 import geotrellis.spark.io._
@@ -20,6 +20,6 @@ class AccumuloReaderSet(instance: AccumuloInstance)(implicit sc: SparkContext) e
   val attributeStore = AccumuloAttributeStore(instance.connector)
   val metadataReader = new MetadataReader(attributeStore)
   val layerReader = AccumuloLayerReader(instance)
-  val singleBandTileReader = new TileReader[SpaceTimeKey, TileFeature[Tile, MTL]](AccumuloValueReader(instance))
-  val multiBandTileReader = new TileReader[SpaceTimeKey, TileFeature[MultibandTile, MTL]](AccumuloValueReader(instance))
+  val singleBandTileReader = new TileReader[SpaceTimeKey, TileFeature[Tile, Array[MTL]]](AccumuloValueReader(instance))
+  val multiBandTileReader = new TileReader[SpaceTimeKey, TileFeature[MultibandTile, Array[MTL]]](AccumuloValueReader(instance))
 }

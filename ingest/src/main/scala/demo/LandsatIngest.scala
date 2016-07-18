@@ -22,6 +22,7 @@ import spray.json.DefaultJsonProtocol._
 import org.apache.spark._
 import org.apache.spark.rdd._
 import com.github.nscala_time.time.Imports._
+import spire.syntax.cfor._
 
 import scala.util.Try
 
@@ -63,7 +64,7 @@ object LandsatIngest extends Logging {
   def fetch(
     images: Seq[LandsatImage],
     source: LandsatImage => Option[ProjectedRaster[MultibandTile]]
-  )(implicit sc: SparkContext): RDD[(TemporalProjectedExtent, TileFeature[MultibandTile, MTL])] = {
+  )(implicit sc: SparkContext): RDD[(TemporalProjectedExtent, TileFeature[MultibandTile, Array[MTL]])] = {
     sc.parallelize(images, images.length) // each image gets its own partition
       .mapPartitions({ iter =>
         for {
@@ -74,7 +75,16 @@ object LandsatIngest extends Logging {
           layoutRows = math.ceil(reprojected.rows.toDouble / 256).toInt
           chunk <- reprojected.split(TileLayout(layoutCols, layoutRows, 256, 256), Split.Options(cropped = false, extend = false))
         } yield {
-          TemporalProjectedExtent(chunk.extent, WebMercator, img.aquisitionDate) -> TileFeature(chunk.tile, img.getMtlFromS3())
+          val tile = chunk.tile
+          val array = new Array[MTL](tile.size + tile.cols)
+          val mtl = img.getMtlFromS3()
+          cfor(0)(_ < tile.rows, _ + 1) { row =>
+            cfor(0)(_ < tile.cols, _ + 1) { col =>
+              array.update(row * col + col, mtl)
+            }
+          }
+
+          TemporalProjectedExtent(chunk.extent, WebMercator, img.aquisitionDate) -> TileFeature(tile, array)
         }
       }, preservesPartitioning = true)
       .repartition(images.length * 16) // Break up each scene into 16 partitions
