@@ -1,4 +1,4 @@
-name := "ingest"
+name := "core"
 scalaVersion := Version.scala
 javaOptions += "-Xmx8G"
 

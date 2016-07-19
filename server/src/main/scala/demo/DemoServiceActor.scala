@@ -1,37 +1,24 @@
 package demo
 
+import demo.avro._
+
 import geotrellis.proj4._
 import geotrellis.raster._
-import geotrellis.raster.histogram._
-import geotrellis.raster.io.geotiff._
-import geotrellis.raster.rasterize._
-import geotrellis.raster.render._
-import geotrellis.raster.resample._
 import geotrellis.spark._
 import geotrellis.spark.io._
-import geotrellis.raster.summary.polygonal._
 import geotrellis.spark.tiling._
 import geotrellis.vector._
 import geotrellis.vector.io._
-import geotrellis.vector.reproject._
-
 import org.apache.spark._
-
 import akka.actor._
-import akka.io.IO
-import spray.can.Http
+import com.azavea.landsatutil.MTL
 import spray.routing._
-import spray.routing.directives.CachingDirectives
 import spray.http.MediaTypes
-import spray.http.HttpHeaders.RawHeader
 import spray.httpx.SprayJsonSupport._
 import spray.json._
+import com.github.nscala_time.time.Imports._
 
-import com.github.nscala_time.time.Imports._
-import com.typesafe.config.ConfigFactory
-import com.github.nscala_time.time.Imports._
 import scala.concurrent._
-import spire.syntax.cfor._
 
 import scala.util.Try
 
@@ -81,7 +68,7 @@ class DemoServiceActor(
               case _ => sys.error(s"UNKNOWN OPERATION")
             }
 
-            val rdd = catalog.query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
+            val rdd = catalog.query[SpaceTimeKey, TileFeature[MultibandTile, Array[MTL]], TileLayerMetadata[SpaceTimeKey]](layerId)
               .where(Intersects(point.envelope))
               .result
 
@@ -92,7 +79,7 @@ class DemoServiceActor(
                 // reconstruct tile raster extent so we can map the point to the tile cell
                 val re = RasterExtent(mt(k), tile.cols, tile.rows)
                 val (tileCol, tileRow) = re.mapToGrid(point)
-                val ret = fn(tile).getDouble(tileCol, tileRow)
+                val ret = fn(tile.tile).getDouble(tileCol, tileRow)
                 println(s"$point equals $ret at ($tileCol, $tileRow) in tile $re ")
                 (k.time, ret)
               }
@@ -142,22 +129,22 @@ class DemoServiceActor(
                 }
 
                 val rdd1 = catalog
-                  .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
+                  .query[SpaceTimeKey, TileFeature[MultibandTile, Array[MTL]], TileLayerMetadata[SpaceTimeKey]](layerId)
                   .where(At(DateTime.parse(time, dateTimeFormat)))
                   .where(Intersects(extent))
                   .result
-                val answer1 = ContextRDD(rdd1.mapValues({ v => fn(v) }), rdd1.metadata).polygonalMean(geometry)
+                val answer1 = ContextRDD(rdd1.mapValues({ v => fn(v.tile) }), rdd1.metadata).polygonalMean(geometry)
 
                 val answer2: Double = otherTime match {
                   case None => 0.0
                   case Some(otherTime) =>
                     val rdd2 = catalog
-                      .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
+                      .query[SpaceTimeKey, TileFeature[MultibandTile, Array[MTL]], TileLayerMetadata[SpaceTimeKey]](layerId)
                       .where(At(DateTime.parse(otherTime, dateTimeFormat)))
                       .where(Intersects(extent))
                       .result
 
-                    ContextRDD(rdd2.mapValues({ v => fn(v) }), rdd2.metadata).polygonalMean(geometry)
+                    ContextRDD(rdd2.mapValues({ v => fn(v.tile) }), rdd2.metadata).polygonalMean(geometry)
                 }
 
                 val answer = answer1 - answer2
@@ -236,14 +223,14 @@ class DemoServiceActor(
                     case Some (op) =>
                       op match {
                         case "ndvi" =>
-                          Render.ndvi(tile)
+                          Render.ndvi(tile.tile)
                         case "ndwi" =>
-                          Render.ndwi(tile)
+                          Render.ndwi(tile.tile)
                         case _ =>
                           sys.error(s"UNKNOWN OPERATION $op")
                       }
                     case None =>
-                      Render.image(tile)
+                      Render.image(tile.tile)
                   }
                 println(s"BYTES: ${png.bytes.length}")
                 png.bytes
@@ -276,9 +263,9 @@ class DemoServiceActor(
                     case Some (op) =>
                     op match {
                       case "ndvi" =>
-                      Render.ndvi(tile1, tile2)
+                      Render.ndvi(tile1.tile, tile2.tile)
                       case "ndwi" =>
-                      Render.ndwi(tile1, tile2)
+                      Render.ndwi(tile1.tile, tile2.tile)
                       case _ =>
                       sys.error(s"UNKNOWN OPERATION $op")
                     }

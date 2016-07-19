@@ -1,8 +1,8 @@
 # Query parameters
 export LAYER_NAME := japan-typhoon
-export START_DATE := 2015-07-01
-export END_DATE := 2015-11-30
-export BBOX := 135.35,33.23,143.01,41.1
+export START_DATE := 2015-06-01
+export END_DATE := 2015-06-10
+export BBOX := -43.9883,-22.3221,-42.7695,-21.0435
 export MAX_CLOUD_COVERAGE := 30.0
 
 export DRIVER_MEMORY := 4200M
