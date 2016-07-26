@@ -43,13 +43,13 @@ upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
 
 create-cluster:
 	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
---release-label emr-4.5.0 \
+--release-label emr-4.7.2 \
 --output text \
 --use-default-roles \
 --configurations "file://$(CURDIR)/scripts/configurations.json" \
 --log-uri ${S3_URI}/logs \
 --ec2-attributes KeyName=${EC2_KEY},SubnetId=${SUBNET_ID} \
---applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox \
+--applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox Name=HBase \
 --instance-groups \
 Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTANCE} \
 Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE} \
@@ -82,8 +82,8 @@ ${S3_URI}/ingest-assembly-0.1.0.jar,\
 --endDate,${END_DATE},\
 --maxCloudCoverage,${MAX_CLOUD_COVERAGE},\
 --limit,${LIMIT},\
---output,accumulo,\
---params,\"instance=accumulo,table=tiles,user=root,password=secret\"\
+--output,hbase,\
+--params,\"table=tiles\"\
 ] | cut -f2 | tee last-step-id.txt
 
 wait: INTERVAL:=60
