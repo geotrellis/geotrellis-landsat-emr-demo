@@ -83,7 +83,7 @@ ${S3_URI}/ingest-assembly-0.1.0.jar,\
 --maxCloudCoverage,${MAX_CLOUD_COVERAGE},\
 --limit,${LIMIT},\
 --output,hbase,\
---params,\"zookeepers=`hostname`,master=`hostname`,table=tiles\"\
+--params,\"table=tiles\"\
 ] | cut -f2 | tee last-step-id.txt
 
 wait: INTERVAL:=60

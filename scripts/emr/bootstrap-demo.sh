@@ -33,6 +33,7 @@ post-stop exec sleep 60
 
 # Start Static Web Server
 aws s3 cp $SITE_TGZ /tmp/site.tgz
+sudo mkdir -p /var/www/html
 sudo tar -xzf /tmp/site.tgz -C /var/www/html
 sudo chmod 644 /var/www/html/*
 sudo chmod 755 /var/www/html
