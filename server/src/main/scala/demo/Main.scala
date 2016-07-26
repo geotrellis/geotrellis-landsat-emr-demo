@@ -10,6 +10,7 @@ import geotrellis.spark.io._
 import geotrellis.spark.io.file._
 import geotrellis.spark.io.s3._
 import geotrellis.spark.io.accumulo._
+import geotrellis.spark.io.hbase._
 import geotrellis.spark.io.avro._
 import geotrellis.spark.io.avro.codecs._
 import geotrellis.spark.io.json._
@@ -78,7 +79,13 @@ object Main {
         val instance = AccumuloInstance(instanceName, zooKeeper, user, password)
 
         new AccumuloReaderSet(instance)
-     } else {
+      } else if(args(0) == "hbase") {
+        val zooKeepers = args(1).split(",").toSeq
+        val master = args(2)
+        val instance = HBaseInstance(zooKeepers, master)
+
+        new HBaseReaderSet(instance)
+      } else {
         sys.error(s"Unknown catalog type ${args(0)}")
       }
 

@@ -12,7 +12,7 @@ import geotrellis.spark.io._
 import geotrellis.spark.io.index._
 import geotrellis.spark.io.s3._
 import geotrellis.spark.io.file._
-import geotrellis.spark.io.accumulo._
+import geotrellis.spark.io.hbase._
 import geotrellis.spark.partition._
 import geotrellis.spark.util._
 import geotrellis.spark.tiling._
@@ -25,12 +25,8 @@ import spray.json.DefaultJsonProtocol._
 import spray.json._
 import org.apache.spark._
 import org.apache.spark.rdd._
-import org.apache.accumulo.core.client.security.tokens._
 
 import scala.util.Try
-import java.net._
-import java.io._
-import org.apache.commons.io.IOUtils
 
 object LandsatIngest extends Logging {
 

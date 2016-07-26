@@ -27,7 +27,7 @@ exec spark-submit --master yarn-client \
      --driver-memory 5G --driver-cores 4 \
      --executor-cores 2 --executor-memory 5G \
      --conf spark.dynamicAllocation.enabled=true \
-     /tmp/tile-server.jar accumulo accumulo `hostname` root secret
+     /tmp/tile-server.jar hbase `hostname` `hostname`
 post-stop exec sleep 60
 " | sudo tee /etc/init/tile-server.conf
 

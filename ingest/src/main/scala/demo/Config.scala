@@ -10,6 +10,7 @@ import geotrellis.spark.io.s3._
 import geotrellis.spark.io.hadoop._
 import geotrellis.spark.io.file._
 import geotrellis.spark.io.accumulo._
+import geotrellis.spark.io.hbase._
 import com.azavea.landsatutil._
 
 import org.apache.accumulo.core.client.security.tokens._
@@ -58,6 +59,20 @@ case class Config (
         case None => SocketWriteStrategy()
       }
       AccumuloLayerWriter(instance, params("table"), strategy)
+
+    case "hbase" =>
+      val zookeepers: Seq[String] = params.get("zookeepers").map(_.split(",").toSeq).getOrElse {
+        val conf = new Configuration // if not specified assume zookeeper is same as DFS master
+        Seq(new URI(conf.get("fs.defaultFS")).getHost)
+      }
+
+      val master: String = params.get("master").getOrElse {
+        val conf = new Configuration // if not specified assume zookeeper is same as DFS master
+        new URI(conf.get("fs.defaultFS")).getHost
+      }
+
+      val instance = HBaseInstance(zookeepers, master)
+      HBaseLayerWriter(instance, params("table"))
   }
 }
 
