@@ -32,11 +32,7 @@ object Render {
       val green = tile.band(1).convert(IntCellType).map(clamp _).normalize(min, max, 0, 255)
       val blue = tile.band(2).convert(IntCellType).map(clamp _).normalize(min, max, 0, 255)
 
-      println(red.asciiDraw())
-      //println(green.asciiDraw())
-      //println(blue.asciiDraw())
-
-      (red, red, red)
+      (red, green, blue)
     } else {
       // Planet Labs
       (tile.band(0).combine(tile.band(3)) { (z, m) => if(m == 0) 0 else z },
