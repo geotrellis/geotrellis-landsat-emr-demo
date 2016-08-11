@@ -4,7 +4,8 @@ import geotrellis.proj4.{CRS, LatLng, WebMercator}
 import geotrellis.raster.split.Split
 import geotrellis.raster._
 import geotrellis.spark._
-import geotrellis.spark.etl.{EtlJob, InputPlugin}
+import geotrellis.spark.etl.InputPlugin
+import geotrellis.spark.etl.config.EtlConf
 import geotrellis.spark.tiling._
 
 import com.azavea.landsatutil.LandsatImage
@@ -19,9 +20,9 @@ abstract class LandsatInput[I, V] extends InputPlugin[I, V] {
 
   var images: Seq[LandsatImage] = Seq()
 
-  def fetchMethod: (LandsatImage, EtlJob) => Option[ProjectedRaster[MultibandTile]] = { (img, job) =>
-    Try { img.getRasterFromS3(bandsWanted = job.bandsWanted, hook = job.cacheHook) }
-      .recover{ case err => img.getFromGoogle(bandsWanted = job.bandsWanted, hook = job.cacheHook).raster }
+  def fetchMethod: (LandsatImage, EtlConf) => Option[ProjectedRaster[MultibandTile]] = { (img, conf) =>
+    Try { img.getRasterFromS3(bandsWanted = conf.bandsWanted, hook = conf.cacheHook) }
+      .recover{ case err => img.getFromGoogle(bandsWanted = conf.bandsWanted, hook = conf.cacheHook).raster }
       .toOption
   }
 
@@ -59,15 +60,15 @@ abstract class LandsatInput[I, V] extends InputPlugin[I, V] {
     * produces by processing each partition.
     */
   def fetch(
-    job: EtlJob,
+    conf: EtlConf,
     images: Seq[LandsatImage],
-    source: (LandsatImage, EtlJob) => Option[ProjectedRaster[MultibandTile]]
+    source: (LandsatImage, EtlConf) => Option[ProjectedRaster[MultibandTile]]
   )(implicit sc: SparkContext): RDD[(TemporalProjectedExtent, MultibandTile)] = {
     sc.parallelize(images, images.length) // each image gets its own partition
       .mapPartitions({ iter =>
       for {
         img <- iter
-        ProjectedRaster(raster, crs) <- source(img, job).toList
+        ProjectedRaster(raster, crs) <- source(img, conf).toList
         reprojected = raster.reproject(crs, WebMercator) // reprojection before chunking avoids NoData artifacts
         layoutCols = math.ceil(reprojected.cols.toDouble / 256).toInt
         layoutRows = math.ceil(reprojected.rows.toDouble / 256).toInt

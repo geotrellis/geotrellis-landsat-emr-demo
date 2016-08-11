@@ -6,7 +6,7 @@ import geotrellis.vector.io._
 import geotrellis.raster._
 import geotrellis.spark._
 import geotrellis.spark.io._
-import geotrellis.spark.etl.{Etl, EtlJob, OutputPlugin}
+import geotrellis.spark.etl.{Etl, OutputPlugin}
 import geotrellis.spark.etl.config.EtlConf
 import geotrellis.spark.util._
 import geotrellis.spark.pyramid._
@@ -21,7 +21,7 @@ object LandsatIngest extends Logging {
     * It is expected that the user will generate this list using `Landsat8Query` and prefilter.
     */
   def run(
-    job: EtlJob,
+    conf: EtlConf,
     reprojected: RDD[(TemporalProjectedExtent, MultibandTile)],
     inputPlugin: TemporalMultibandLandsatInput,
     writer: Writer[LayerId, RDD[(SpaceTimeKey, MultibandTile)] with Metadata[TileLayerMetadata[SpaceTimeKey]]],
@@ -29,8 +29,8 @@ object LandsatIngest extends Logging {
   )(implicit sc: SparkContext): Unit = {
     // Our dataset can span UTM zones, we must reproject the tiles individually to common projection
     val maxZoom = 13 // We know this ahead of time based on Landsat resolution
-    val output = job.conf.output
-    val layerName = job.conf.input.name
+    val output = conf.output
+    val layerName = conf.input.name
     val destCRS = output.getCrs.get
     val resampleMethod = output.resampleMethod
     val layoutScheme = output.getLayoutScheme
@@ -63,23 +63,22 @@ object LandsatIngestMain extends Logging {
     logger.info(s"Arguments: ${args.toSeq}")
     implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
     EtlConf(args) foreach { conf =>
-      val job = EtlJob(conf)
-      val etl = Etl(job, Etl.defaultModules :+ LandsatModule)
+      val etl = Etl(conf, Etl.defaultModules :+ LandsatModule)
       val inputPlugin = new TemporalMultibandLandsatInput()
-      val sourceTiles = inputPlugin(job)
+      val sourceTiles = inputPlugin(conf)
 
       val outputPlugin = etl.combinedModule
         .findSubclassOf[OutputPlugin[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]]]
-        .find { _.suitableFor(job.conf.output.backend.`type`.name) }
-        .getOrElse(sys.error(s"Unable to find output module of type '${job.conf.output.backend.`type`}'"))
+        .find { _.suitableFor(conf.output.backend.`type`.name) }
+        .getOrElse(sys.error(s"Unable to find output module of type '${conf.output.backend.`type`}'"))
 
       /* TODO if the layer exists the ingest will fail, we need to use layer updater*/
       LandsatIngest.run(
-        job            = job,
+        conf           = conf,
         reprojected    = sourceTiles,
         inputPlugin    = inputPlugin,
-        writer         = outputPlugin.writer(job),
-        attributeStore = outputPlugin.attributes(job))
+        writer         = outputPlugin.writer(conf),
+        attributeStore = outputPlugin.attributes(conf))
     }
 
     sc.stop()

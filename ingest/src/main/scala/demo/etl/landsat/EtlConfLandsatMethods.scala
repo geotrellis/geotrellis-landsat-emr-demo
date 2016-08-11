@@ -1,11 +1,11 @@
 package demo.etl.landsat
 
-import geotrellis.spark.etl.EtlJob
+import geotrellis.spark.etl.config.EtlConf
 import com.azavea.landsatutil.IOHook
 import java.io.File
 
-trait EtlJobsLandsatMethods {
-  val self: EtlJob
+trait EtlConfLandsatMethods {
+  val self: EtlConf
 
   val help = """
                |geotrellis-etl-landsat-input
@@ -58,7 +58,7 @@ trait EtlJobsLandsatMethods {
       }
     }
 
-  def landsatInput = nextOption(Map(), self.conf.input.backend.path.split(" ").toList)
+  def landsatInput = nextOption(Map(), self.input.backend.path.split(" ").toList)
 
   def cacheHook: IOHook = landsatInput.get('cache).map(new File(_)) match {
     case Some(dir) => IOHook.localCache(dir)
