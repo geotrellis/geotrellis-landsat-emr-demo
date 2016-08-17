@@ -1,14 +1,5 @@
 [
   {
-    "name": "landsat",
-    "format": "geotiff",
-    "backend": {
-      "type": "landsat",
-      "path": "--cache catalog-cache --bandsWanted 4,3,2,5,QA --bbox -43.9883,-22.3221,-42.7695,-21.0435 --startDate 2015-06-01 --endDate 2015-06-10 --limit 1"
-    },
-    "cache": "NONE"
-  },
-  {
     "name": "japan-typhoon",
     "format": "geotiff",
     "backend": {

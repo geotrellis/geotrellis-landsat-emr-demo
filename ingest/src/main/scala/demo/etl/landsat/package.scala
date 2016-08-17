@@ -1,5 +1,7 @@
 package demo.etl
 
+import java.net.URI
+
 import geotrellis.spark.etl._
 import geotrellis.spark.etl.config._
 import geotrellis.spark.io.AttributeStore
@@ -9,7 +11,7 @@ import geotrellis.spark.io.hbase.HBaseAttributeStore
 import geotrellis.spark.io.cassandra.CassandraAttributeStore
 import geotrellis.spark.io.hadoop.HadoopAttributeStore
 import geotrellis.spark.io.s3.S3AttributeStore
-
+import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkConf
 import org.apache.spark.deploy.SparkHadoopUtil
 
@@ -20,7 +22,10 @@ package object landsat {
     conf.output.backend.`type` match {
       case AccumuloType => {
         AccumuloAttributeStore(conf.outputProfile.collect { case ap: AccumuloProfile =>
-          ap.getInstance
+          (if(ap.zookeepers.isEmpty) {
+            val conf = new Configuration // if not specified assume zookeeper is same as DFS master
+            ap.copy(zookeepers = new URI(conf.get("fs.defaultFS")).getHost)
+          } else ap).getInstance
         }.get.connector)
       }
       case HBaseType => {

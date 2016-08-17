@@ -1,7 +1,8 @@
 {
   "backend": {
-    "type": "file",
-    "path": "catalog"
+    "type": "accumulo",
+    "path": "lctiles",
+    "profile": "accumulo-profile"
   },
   "reprojectMethod": "buffered",
   "cellSize": {

@@ -1,9 +1,9 @@
 {
   "backend-profiles": [
     {
-      "name": "name",
+      "name": "accumulo-profile",
       "type": "accumulo",
-      "zookeepers": "zookeepers",
+      "zookeepers": "",
       "instance": "instance",
       "user": "user",
       "password": "password"
