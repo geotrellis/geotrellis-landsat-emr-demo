@@ -1,15 +1,23 @@
 {
   "backend-profiles": [
     {
-      "name": "accumulo-profile",
+      "name": "accumulo-emr",
       "type": "accumulo",
       "zookeepers": "",
+      "instance": "accumulo",
+      "user": "root",
+      "password": "secret"
+    },
+    {
+      "name": "accumulo-local",
+      "type": "accumulo",
+      "zookeepers": "zookeepers",
       "instance": "instance",
       "user": "user",
       "password": "password"
     },
     {
-      "name": "name",
+      "name": "cassandra-local",
       "type": "cassandra",
       "allowRemoteDCsForLocalConsistencyLevel": false,
       "localDc": "datacenter1",

@@ -118,8 +118,8 @@ local-ingest: ${INGEST_ASSEMBLY}
 	spark-submit --name "${NAME} Ingest" --master "local[4]" --driver-memory 4G \
 ${INGEST_ASSEMBLY} \
 --backend-profiles "file:///${PWD}/conf/backend-profiles.json" \
---input "file://${PWD}/conf/input.json" \
---output "file://${PWD}/conf/output.json"
+--input "file://${PWD}/conf/input-local.json" \
+--output "file://${PWD}/conf/output-local.json"
 
 local-tile-server: CATALOG=catalog
 local-tile-server:

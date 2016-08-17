@@ -1,7 +1,5 @@
 package demo.etl
 
-import java.net.URI
-
 import geotrellis.spark.etl._
 import geotrellis.spark.etl.config._
 import geotrellis.spark.io.AttributeStore
@@ -11,9 +9,12 @@ import geotrellis.spark.io.hbase.HBaseAttributeStore
 import geotrellis.spark.io.cassandra.CassandraAttributeStore
 import geotrellis.spark.io.hadoop.HadoopAttributeStore
 import geotrellis.spark.io.s3.S3AttributeStore
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.SparkConf
 import org.apache.spark.deploy.SparkHadoopUtil
+
+import java.net.URI
 
 package object landsat {
   implicit class withEtlConfLandsatMethods(val self: EtlConf) extends EtlConfLandsatMethods
@@ -22,10 +23,7 @@ package object landsat {
     conf.output.backend.`type` match {
       case AccumuloType => {
         AccumuloAttributeStore(conf.outputProfile.collect { case ap: AccumuloProfile =>
-          (if(ap.zookeepers.isEmpty) {
-            val conf = new Configuration // if not specified assume zookeeper is same as DFS master
-            ap.copy(zookeepers = new URI(conf.get("fs.defaultFS")).getHost)
-          } else ap).getInstance
+          ap.getInstance
         }.get.connector)
       }
       case HBaseType => {
@@ -46,6 +44,28 @@ package object landsat {
       }
       case UserDefinedBackendType(s) => throw new Exception(s"No Attribute store for user defined backend type $s")
       case UserDefinedBackendInputType(s) => throw new Exception(s"No Attribute store for user defined backend input type $s")
+    }
+  }
+
+  def confWithDefaults(conf: EtlConf) = {
+    def getDefaultFS = {
+      val conf = new Configuration // if not specified assume zookeeper is same as DFS master
+      new URI(conf.get("fs.defaultFS")).getHost
+    }
+
+    conf.output.backend.`type` match {
+      case AccumuloType => {
+        new EtlConf(
+          input  = conf.input,
+          output = conf.output,
+          inputProfile  = conf.inputProfile,
+          outputProfile = conf.outputProfile.map {
+            case ap: AccumuloProfile => if(ap.zookeepers.isEmpty) ap.copy(zookeepers = getDefaultFS) else ap
+            case p => p
+          })
+      }
+
+      case _ => conf
     }
   }
 

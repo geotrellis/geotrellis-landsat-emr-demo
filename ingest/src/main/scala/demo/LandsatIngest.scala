@@ -1,7 +1,6 @@
 package demo
 
 import demo.etl.landsat.{LandsatModule, TemporalMultibandLandsatInput}
-
 import geotrellis.vector.io._
 import geotrellis.raster._
 import geotrellis.spark._
@@ -63,22 +62,23 @@ object LandsatIngestMain extends Logging {
     logger.info(s"Arguments: ${args.toSeq}")
     implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
     EtlConf(args) foreach { conf =>
-      val etl = Etl(conf, Etl.defaultModules :+ LandsatModule)
+      val uconf = demo.etl.landsat.confWithDefaults(conf)
+      val etl = Etl(uconf, Etl.defaultModules :+ LandsatModule)
       val inputPlugin = new TemporalMultibandLandsatInput()
-      val sourceTiles = inputPlugin(conf)
+      val sourceTiles = inputPlugin(uconf)
 
       val outputPlugin = etl.combinedModule
         .findSubclassOf[OutputPlugin[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]]]
-        .find { _.suitableFor(conf.output.backend.`type`.name) }
-        .getOrElse(sys.error(s"Unable to find output module of type '${conf.output.backend.`type`}'"))
+        .find { _.suitableFor(uconf.output.backend.`type`.name) }
+        .getOrElse(sys.error(s"Unable to find output module of type '${uconf.output.backend.`type`}'"))
 
       /* TODO if the layer exists the ingest will fail, we need to use layer updater*/
       LandsatIngest.run(
-        conf           = conf,
+        conf           = uconf,
         reprojected    = sourceTiles,
         inputPlugin    = inputPlugin,
-        writer         = outputPlugin.writer(conf),
-        attributeStore = outputPlugin.attributes(conf))
+        writer         = outputPlugin.writer(uconf),
+        attributeStore = outputPlugin.attributes(uconf))
     }
 
     sc.stop()

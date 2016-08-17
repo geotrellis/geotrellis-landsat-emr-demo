@@ -1,8 +1,7 @@
 {
   "backend": {
-    "type": "accumulo",
-    "path": "tiles",
-    "profile": "accumulo-emr"
+    "type": "file",
+    "path": "catalog"
   },
   "reprojectMethod": "buffered",
   "cellSize": {
