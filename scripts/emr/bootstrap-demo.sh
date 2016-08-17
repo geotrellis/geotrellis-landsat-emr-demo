@@ -9,6 +9,9 @@ do
         --site=*)
             SITE_TGZ="${i#*=}"
             shift;;
+        --s3u=*)
+            S3U="${i#*=}"
+            shift;;
     esac
 done
 
@@ -16,6 +19,9 @@ set -x
 
 # Download Tile Server
 aws s3 cp $TILE_SERVER_JAR /tmp/tile-server.jar
+aws s3 cp $S3U/backend-profiles.json /tmp/backend-profiles.json
+aws s3 cp $S3U/input.json /tmp/input.json
+aws s3 cp $S3U/output.json /tmp/output.json
 
 echo "\
 description \"Landsat Demo Tile Server\"

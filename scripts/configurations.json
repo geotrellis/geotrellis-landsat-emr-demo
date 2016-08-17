@@ -24,6 +24,7 @@
       {
         "Classification": "export",
         "Properties": {
+          "JAVA_HOME": "/usr/lib/jvm/java-1.8.0",
           "GDAL_DATA": "/usr/local/share/gdal",
           "LD_LIBRARY_PATH": "/usr/local/lib",
           "PYSPARK_PYTHON": "python27",
@@ -38,6 +39,7 @@
       {
         "Classification": "export",
         "Properties": {
+          "JAVA_HOME": "/usr/lib/jvm/java-1.8.0",
           "GDAL_DATA": "/usr/local/share/gdal",
           "LD_LIBRARY_PATH": "/usr/local/lib",
           "PYSPARK_PYTHON": "python27",
@@ -52,6 +54,7 @@
       {
         "Classification": "export",
         "Properties": {
+          "JAVA_HOME": "/usr/lib/jvm/java-1.8.0",
           "GDAL_DATA": "/usr/local/share/gdal",
           "LD_LIBRARY_PATH": "/usr/local/lib",
           "PYSPARK_PYTHON": "python27",

@@ -38,6 +38,9 @@ upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
 	@aws s3 cp scripts/emr/bootstrap-demo.sh ${S3_URI}/
 	@aws s3 cp scripts/emr/bootstrap-geowave.sh ${S3_URI}/
 	@aws s3 cp scripts/emr/geowave-install-lib.sh ${S3_URI}/
+	@aws s3 cp conf/backend-profiles.json ${S3_URI}/
+	@aws s3 cp conf/input.json ${S3_URI}/
+	@aws s3 cp conf/output.json ${S3_URI}/
 	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
 	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
 
@@ -56,7 +59,7 @@ Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=
 --bootstrap-actions \
 Name=BootstrapGeoWave,Path=${S3_URI}/bootstrap-geowave.sh \
 Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
-Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz] \
+Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=${S3_URI}] \
 | tee cluster-id.txt
 
 ingest: LIMIT=9999
@@ -76,14 +79,9 @@ spark-submit,--master,yarn-cluster,\
 --conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
 --conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
 ${S3_URI}/ingest-assembly-0.1.0.jar,\
---layerName,"${LAYER_NAME}",\
---bbox,\"${BBOX}\",\
---startDate,${START_DATE},\
---endDate,${END_DATE},\
---maxCloudCoverage,${MAX_CLOUD_COVERAGE},\
---limit,${LIMIT},\
---output,accumulo,\
---params,\"instance=accumulo,table=tiles,user=root,password=secret\"\
+--input,"file:///tmp/input.json",\
+--output,"file:///tmp/output.json",\
+--backend-profiles,"file:///tmp/backend-profiles.json"\
 ] | cut -f2 | tee last-step-id.txt
 
 wait: INTERVAL:=60

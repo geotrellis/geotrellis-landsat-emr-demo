@@ -1,4 +1,4 @@
-export EC2_KEY:=geotrellis-demo
+export EC2_KEY:=geotrellis-emr
 export AWS_DEFAULT_REGION:=us-east-1
 export S3_URI:=s3://geotrellis-demo/emr/${USER}
 export SUBNET_ID:=subnet-c5fefdb1
