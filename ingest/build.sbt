@@ -8,7 +8,11 @@ connectInput in run := true
 
 libraryDependencies ++= Seq(
   "com.azavea" %% "scala-landsat-util" % "0.2.0-SNAPSHOT",
-  "com.azavea.geotrellis" %% "geotrellis-spark-etl" % Version.geotrellis,
+  "com.azavea.geotrellis" %% "geotrellis-spark-etl" % Version.geotrellis
+    exclude("com.datastax.cassandra", "cassandra-driver-core"),
+  "com.datastax.cassandra" % "cassandra-driver-core" % "2.1.10.2"
+    excludeAll (ExclusionRule("org.jboss.netty"), ExclusionRule("io.netty"), ExclusionRule("org.slf4j"), ExclusionRule("io.spray"), ExclusionRule("com.typesafe.akka"))
+    exclude("org.apache.hadoop", "hadoop-client"),
   "org.apache.spark"      %% "spark-core" % "1.5.2" % "provided",
   "com.azavea.geotrellis" %% "geotrellis-spark-testkit" % Version.geotrellis % "test",
   "org.scalatest"         %%  "scalatest" % "2.2.0" % "test"

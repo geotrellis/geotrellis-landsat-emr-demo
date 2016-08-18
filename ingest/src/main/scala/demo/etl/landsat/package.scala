@@ -64,7 +64,29 @@ package object landsat {
             case p => p
           })
       }
-
+      case CassandraType => {
+        new EtlConf(
+          input  = conf.input,
+          output = conf.output,
+          inputProfile  = conf.inputProfile,
+          outputProfile = conf.outputProfile.map {
+            case ap: CassandraProfile => if(ap.hosts.isEmpty) ap.copy(hosts = getDefaultFS) else ap
+            case p => p
+          })
+      }
+      case HBaseType => {
+        new EtlConf(
+          input  = conf.input,
+          output = conf.output,
+          inputProfile  = conf.inputProfile,
+          outputProfile = conf.outputProfile.map {
+            case ap: HBaseProfile => {
+              val nap = if (ap.zookeepers.isEmpty) ap.copy(zookeepers = getDefaultFS) else ap
+              if(ap.master.isEmpty) nap.copy(master = getDefaultFS) else nap
+            }
+            case p => p
+          })
+      }
       case _ => conf
     }
   }

@@ -4,16 +4,8 @@ import geotrellis.raster._
 import geotrellis.spark._
 import geotrellis.spark.io._
 import geotrellis.spark.io.s3._
-import geotrellis.spark.io.json._
-import geotrellis.spark.io.index._
-import geotrellis.spark.io.avro._
-import geotrellis.spark.io.avro.codecs._
 
-import org.apache.avro.Schema
-import org.apache.spark._
-
-import spray.json._
-import spray.json.DefaultJsonProtocol._
+import org.apache.spark.SparkContext
 
 class S3ReaderSet(bucket: String, prefix: String)(implicit sc: SparkContext) extends ReaderSet {
   val attributeStore = S3AttributeStore(bucket, prefix)

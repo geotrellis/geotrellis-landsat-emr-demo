@@ -16,7 +16,6 @@ import geotrellis.vector.io._
 import geotrellis.vector.reproject._
 
 import org.apache.spark._
-
 import akka.actor._
 import akka.io.IO
 import spray.can.Http
@@ -26,7 +25,6 @@ import spray.http.MediaTypes
 import spray.http.HttpHeaders.RawHeader
 import spray.httpx.SprayJsonSupport._
 import spray.json._
-
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
 import com.github.nscala_time.time.Imports._
