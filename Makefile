@@ -68,7 +68,19 @@ upload-code-file: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/sit
 	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
 	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
 
-upload-code-file: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
+upload-code-hadoop: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
+	@aws s3 cp viewer/site.tgz ${S3_URI}/
+	@aws s3 cp scripts/emr/bootstrap-cassandra.sh ${S3_URI}/
+	@aws s3 cp scripts/emr/bootstrap-demo.sh ${S3_URI}/
+	@aws s3 cp scripts/emr/bootstrap-geowave.sh ${S3_URI}/
+	@aws s3 cp scripts/emr/geowave-install-lib.sh ${S3_URI}/
+	@aws s3 cp conf/backend-profiles.json ${S3_URI}/
+	@aws s3 cp conf/input.json ${S3_URI}/
+	@aws s3 cp conf/output-hadoop.json ${S3_URI}/output.json
+	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
+	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
+
+upload-code-hbase: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
 	@aws s3 cp viewer/site.tgz ${S3_URI}/
 	@aws s3 cp scripts/emr/bootstrap-cassandra.sh ${S3_URI}/
 	@aws s3 cp scripts/emr/bootstrap-demo.sh ${S3_URI}/
@@ -82,7 +94,7 @@ upload-code-file: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/sit
 
 create-cluster-accumulo:
 	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
---release-label emr-4.7.2 \
+--release-label emr-4.5.0 \
 --output text \
 --use-default-roles \
 --configurations "file://$(CURDIR)/scripts/configurations.json" \
@@ -100,7 +112,7 @@ Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=
 
 create-cluster-cassandra:
 	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
---release-label emr-4.7.2 \
+--release-label emr-4.5.0 \
 --output text \
 --use-default-roles \
 --configurations "file://$(CURDIR)/scripts/configurations.json" \
@@ -119,6 +131,22 @@ Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=
 
 create-cluster-file:
 	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
+--release-label emr-4.5.0 \
+--output text \
+--use-default-roles \
+--configurations "file://$(CURDIR)/scripts/configurations.json" \
+--log-uri ${S3_URI}/logs \
+--ec2-attributes KeyName=${EC2_KEY},SubnetId=${SUBNET_ID} \
+--applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox \
+--instance-groups \
+Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${WORKER_INSTANCE} \
+--bootstrap-actions \
+Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
+Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=${S3_URI},--backend=file] \
+| tee cluster-id.txt
+
+create-cluster-hadoop:
+	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
 --release-label emr-4.7.2 \
 --output text \
 --use-default-roles \
@@ -130,8 +158,9 @@ create-cluster-file:
 Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTANCE} \
 Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE} \
 --bootstrap-actions \
+Name=BootstrapGeoWave,Path=${S3_URI}/bootstrap-geowave.sh \
 Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
-Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=${S3_URI},--backend=file] \
+Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=${S3_URI},--backend=hadoop] \
 | tee cluster-id.txt
 
 create-cluster-hbase:

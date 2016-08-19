@@ -67,5 +67,5 @@ aws s3 cp $SITE_TGZ /tmp/site.tgz
 sudo tar -xzf /tmp/site.tgz -C /var/www/html
 sudo chmod 644 /var/www/html/*
 sudo chmod 755 /var/www/html
-sudo mkdir /tmp/catalog
-sudo chmod 755 /tmp/catalog
+sudo mkdir -p /tmp/catalog/attributes
+sudo chmod -R 777 /tmp/catalog
