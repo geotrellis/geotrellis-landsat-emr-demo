@@ -238,12 +238,14 @@ class DemoServiceActor(
         cors {
           complete {
             future {
+              val catalog = readerSet.layerReader
               val id = LayerId(layer, zoom)
-              val (obj, str) = timedCreate(JsObject(
-                "keys" -> readerSet
-                  .layerReader
-                  .read[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](id)
-                  .keys.collect().toList.map(_.toString).toString.toJson))
+
+              val (obj, str) = timedCreate(
+                catalog
+                  .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](id)
+                  .result.count()
+              )
 
               JsObject(
                 "obj" -> obj.toJson,
