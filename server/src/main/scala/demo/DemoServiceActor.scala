@@ -14,7 +14,6 @@ import geotrellis.spark.tiling._
 import geotrellis.vector._
 import geotrellis.vector.io._
 import geotrellis.vector.reproject._
-
 import org.apache.spark._
 import akka.actor._
 import akka.io.IO
@@ -26,8 +25,9 @@ import spray.http.HttpHeaders.RawHeader
 import spray.httpx.SprayJsonSupport._
 import spray.json._
 import com.github.nscala_time.time.Imports._
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ConfigFactory, ConfigRenderOptions}
 import com.github.nscala_time.time.Imports._
+
 import scala.concurrent._
 import spire.syntax.cfor._
 
@@ -43,13 +43,12 @@ class DemoServiceActor(
   val metadataReader = readerSet.metadataReader
   val attributeStore = readerSet.attributeStore
 
-  def timedCreate[T](id: LayerId, startMsg: String, endMsg: String)(f: => T): (T, String) = {
-    println(startMsg)
+  def timedCreate[T](f: => T): (T, String) = {
     val s = System.currentTimeMillis
     val result = f
     val e = System.currentTimeMillis
     val t = "%,d".format(e - s)
-    result -> s"id ($id): \t$endMsg (in $t ms)"
+    result -> t
   }
 
 
@@ -240,7 +239,7 @@ class DemoServiceActor(
           complete {
             future {
               val id = LayerId(layer, zoom)
-              val (obj, str) = timedCreate(id, ":::::readall start", ":::::readall finish")(JsObject(
+              val (obj, str) = timedCreate(JsObject(
                 "keys" -> readerSet
                   .layerReader
                   .read[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](id)
@@ -248,7 +247,8 @@ class DemoServiceActor(
 
               JsObject(
                 "obj" -> obj.toJson,
-                "time" -> str.toJson
+                "time" -> str.toJson,
+                "conf" -> ConfigFactory.load().root().render().toJson
               )
             }
           }
