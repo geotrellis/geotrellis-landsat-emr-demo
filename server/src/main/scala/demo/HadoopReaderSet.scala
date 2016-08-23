@@ -12,6 +12,7 @@ class HadoopReaderSet(path: Path)(implicit sc: SparkContext) extends ReaderSet {
   val attributeStore = HadoopAttributeStore(path)
   val metadataReader = new MetadataReader(attributeStore)
   val layerReader = HadoopLayerReader(attributeStore)
+  val layerCReader = HadoopLayerCollectionReader(attributeStore)
   val singleBandTileReader = new TileReader[SpaceTimeKey, Tile](HadoopValueReader(path))
   val multiBandTileReader = new TileReader[SpaceTimeKey, MultibandTile](HadoopValueReader(path))
 }

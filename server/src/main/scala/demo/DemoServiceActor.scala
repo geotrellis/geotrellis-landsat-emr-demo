@@ -239,17 +239,26 @@ class DemoServiceActor(
           complete {
             future {
               val catalog = readerSet.layerReader
+              val ccatalog = readerSet.layerCReader
               val id = LayerId(layer, zoom)
 
-              val (obj, str) = timedCreate(
+              val (objrdd, strrdd) = timedCreate(
                 catalog
                   .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](id)
                   .result.count()
               )
 
+              val (objc, strc) = timedCreate(
+                ccatalog
+                  .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](id)
+                  .result.length
+              )
+
               JsObject(
-                "obj" -> obj.toJson,
-                "time" -> str.toJson,
+                "obj_rdd" -> objrdd.toJson,
+                "time_rdd" -> strrdd.toJson,
+                "obj_collection" -> objc.toJson,
+                "time_collection" -> strc.toJson,
                 "conf" -> ConfigFactory.load().getObject("geotrellis").render(ConfigRenderOptions.concise()).toJson
               )
             }

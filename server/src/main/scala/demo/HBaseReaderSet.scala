@@ -11,6 +11,7 @@ class HBaseReaderSet(instance: HBaseInstance)(implicit sc: SparkContext) extends
   val attributeStore = HBaseAttributeStore(instance)
   val metadataReader = new MetadataReader(attributeStore)
   val layerReader = HBaseLayerReader(instance)
+  val layerCReader = HBaseLayerCollectionReader(instance)
   val singleBandTileReader = new TileReader[SpaceTimeKey, Tile](HBaseValueReader(instance))
   val multiBandTileReader = new TileReader[SpaceTimeKey, MultibandTile](HBaseValueReader(instance))
 }
