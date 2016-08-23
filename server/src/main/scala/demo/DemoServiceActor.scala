@@ -250,7 +250,7 @@ class DemoServiceActor(
               JsObject(
                 "obj" -> obj.toJson,
                 "time" -> str.toJson,
-                "conf" -> ConfigFactory.load().root().render().toJson
+                "conf" -> ConfigFactory.load().getObject("geotrellis").render().toJson
               )
             }
           }
