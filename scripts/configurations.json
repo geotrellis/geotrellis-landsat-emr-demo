@@ -10,8 +10,7 @@
     "Classification": "hdfs-site",
     "Properties": {
       "dfs.replication": "1",
-      "dfs.client.socket-timeout": "60000",
-      "dfs.datanode.socket.write.timeout": "480000"
+      "dfs.permissions": "false"
     }
   },
   {

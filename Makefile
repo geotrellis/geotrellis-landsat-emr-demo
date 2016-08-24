@@ -9,6 +9,7 @@ SCRIPT_RUNNER := s3://elasticmapreduce/libs/script-runner/script-runner.jar
 ifeq ($(USE_SPOT),true)
 MASTER_BID_PRICE:=BidPrice=${MASTER_PRICE},
 WORKER_BID_PRICE:=BidPrice=${WORKER_PRICE},
+BACKEND=accumulo
 endif
 
 ifdef COLOR
@@ -33,119 +34,18 @@ viewer/site.tgz: $(call rwildcard, viewer/components, *.js)
 	@cd viewer && npm install && npm run build
 	tar -czf viewer/site.tgz -C viewer/dist .
 
-upload-code-accumulo: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
+upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
 	@aws s3 cp viewer/site.tgz ${S3_URI}/
 	@aws s3 cp scripts/emr/bootstrap-demo.sh ${S3_URI}/
 	@aws s3 cp scripts/emr/bootstrap-geowave.sh ${S3_URI}/
 	@aws s3 cp scripts/emr/geowave-install-lib.sh ${S3_URI}/
 	@aws s3 cp conf/backend-profiles.json ${S3_URI}/
 	@aws s3 cp conf/input.json ${S3_URI}/
-	@aws s3 cp conf/output-accumulo.json ${S3_URI}/output.json
+	@aws s3 cp conf/output.json ${S3_URI}/output.json
 	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
 	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
 
-upload-code-cassandra: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
-	@aws s3 cp viewer/site.tgz ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-cassandra.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-demo.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-geowave.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/geowave-install-lib.sh ${S3_URI}/
-	@aws s3 cp conf/backend-profiles.json ${S3_URI}/
-	@aws s3 cp conf/input.json ${S3_URI}/
-	@aws s3 cp conf/output-cassandra.json ${S3_URI}/output.json
-	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
-	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
-
-upload-code-file: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
-	@aws s3 cp viewer/site.tgz ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-cassandra.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-demo.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-geowave.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/geowave-install-lib.sh ${S3_URI}/
-	@aws s3 cp conf/backend-profiles.json ${S3_URI}/
-	@aws s3 cp conf/input.json ${S3_URI}/
-	@aws s3 cp conf/output-file.json ${S3_URI}/output.json
-	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
-	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
-
-upload-code-hadoop: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
-	@aws s3 cp viewer/site.tgz ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-cassandra.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-demo.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-geowave.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/geowave-install-lib.sh ${S3_URI}/
-	@aws s3 cp conf/backend-profiles.json ${S3_URI}/
-	@aws s3 cp conf/input.json ${S3_URI}/
-	@aws s3 cp conf/output-hadoop.json ${S3_URI}/output.json
-	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
-	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
-
-upload-code-hbase: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
-	@aws s3 cp viewer/site.tgz ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-cassandra.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-demo.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/bootstrap-geowave.sh ${S3_URI}/
-	@aws s3 cp scripts/emr/geowave-install-lib.sh ${S3_URI}/
-	@aws s3 cp conf/backend-profiles.json ${S3_URI}/
-	@aws s3 cp conf/input.json ${S3_URI}/
-	@aws s3 cp conf/output-hbase.json ${S3_URI}/output.json
-	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
-	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
-
-create-cluster-accumulo:
-	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
---release-label emr-4.5.0 \
---output text \
---use-default-roles \
---configurations "file://$(CURDIR)/scripts/configurations.json" \
---log-uri ${S3_URI}/logs \
---ec2-attributes KeyName=${EC2_KEY},SubnetId=${SUBNET_ID} \
---applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox \
---instance-groups \
-Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTANCE} \
-Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE} \
---bootstrap-actions \
-Name=BootstrapGeoWave,Path=${S3_URI}/bootstrap-geowave.sh \
-Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
-Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=${S3_URI},--backend=accumulo] \
-| tee cluster-id.txt
-
-create-cluster-cassandra:
-	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
---release-label emr-4.5.0 \
---output text \
---use-default-roles \
---configurations "file://$(CURDIR)/scripts/configurations.json" \
---log-uri ${S3_URI}/logs \
---ec2-attributes KeyName=${EC2_KEY},SubnetId=${SUBNET_ID} \
---applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox \
---instance-groups \
-'Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTANCE},EbsConfiguration={EbsOptimized=true,EbsBlockDeviceConfigs=[{VolumeSpecification={VolumeType=io1,SizeInGB=500,Iops=100},VolumesPerInstance=1}]}' \
-'Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE},EbsConfiguration={EbsOptimized=true,EbsBlockDeviceConfigs=[{VolumeSpecification={VolumeType=io1,SizeInGB=500,Iops=100},VolumesPerInstance=1}]}' \
---bootstrap-actions \
-Name=BootstrapGeoWave,Path=${S3_URI}/bootstrap-geowave.sh \
-Name=BootstrapCassandra,Path=${S3_URI}/bootstrap-cassandra.sh \
-Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
-Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=${S3_URI},--backend=cassandra] \
-| tee cluster-id.txt
-
-create-cluster-file:
-	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
---release-label emr-4.5.0 \
---output text \
---use-default-roles \
---configurations "file://$(CURDIR)/scripts/configurations.json" \
---log-uri ${S3_URI}/logs \
---ec2-attributes KeyName=${EC2_KEY},SubnetId=${SUBNET_ID} \
---applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox \
---instance-groups \
-Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${WORKER_INSTANCE} \
---bootstrap-actions \
-Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
-Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=${S3_URI},--backend=file] \
-| tee cluster-id.txt
-
-create-cluster-hadoop:
+create-cluster:
 	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
 --release-label emr-4.7.2 \
 --output text \
@@ -160,7 +60,7 @@ Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=
 --bootstrap-actions \
 Name=BootstrapGeoWave,Path=${S3_URI}/bootstrap-geowave.sh \
 Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
-Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=${S3_URI},--backend=hadoop] \
+Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=${S3_URI},--backend=${BACKEND}] \
 | tee cluster-id.txt
 
 create-cluster-hbase:
