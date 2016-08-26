@@ -231,6 +231,7 @@ class DemoServiceActor(
   }
 
   def readallRoute = {
+    import spray.json._
     import spray.json.DefaultJsonProtocol._
 
     pathPrefix(Segment / IntNumber) { (layer, zoom) =>
@@ -242,25 +243,28 @@ class DemoServiceActor(
               val ccatalog = readerSet.layerCReader
               val id = LayerId(layer, zoom)
 
-              val (objrdd, strrdd) = timedCreate(
-                catalog
-                  .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](id)
-                  .result.count()
-              )
+              JsObject("result" -> ((1 to 20) map { case i =>
+                val (objrdd, strrdd) = timedCreate(
+                  catalog
+                    .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](id)
+                    .result.count()
+                )
 
-              val (objc, strc) = timedCreate(
-                ccatalog
-                  .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](id)
-                  .result.length
-              )
+                val (objc, strc) = timedCreate(
+                  ccatalog
+                    .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](id)
+                    .result.length
+                )
 
-              JsObject(
-                "obj_rdd" -> objrdd.toJson,
-                "time_rdd" -> strrdd.toJson,
-                "obj_collection" -> objc.toJson,
-                "time_collection" -> strc.toJson,
-                "conf" -> ConfigFactory.load().getObject("geotrellis").render(ConfigRenderOptions.concise()).toJson
-              )
+                JsObject(
+                  "n" -> i.toString.toJson,
+                  "obj_rdd" -> objrdd.toJson,
+                  "time_rdd" -> strrdd.toJson,
+                  "obj_collection" -> objc.toJson,
+                  "time_collection" -> strc.toJson,
+                  "conf" -> ConfigFactory.load().getObject("geotrellis").render(ConfigRenderOptions.concise()).toJson
+                )
+              }).toList.toJson)
             }
           }
         }

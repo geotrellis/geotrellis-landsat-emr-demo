@@ -32,7 +32,7 @@
       "name": "cassandra-emr",
       "type": "cassandra",
       "allowRemoteDCsForLocalConsistencyLevel": false,
-      "localDc": "us-east",
+      "localDc":"datacenter1",
       "usedHostsPerRemoteDc": 0,
       "hosts": "",
       "replicationStrategy": "SimpleStrategy",

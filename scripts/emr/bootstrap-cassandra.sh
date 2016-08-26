@@ -26,9 +26,9 @@ if [ ! $CONTINUE ]; then
     sudo service docker start
 
     THIS_SCRIPT="$(realpath "${BASH_SOURCE[0]}")"
-	  TIMEOUT= is_master && TIMEOUT=8 || TIMEOUT=15
-	  echo "bash -x $THIS_SCRIPT --continue > /tmp/cassandra-bootstrap.log" | at now + $TIMEOUT min
-	  exit 0 # Bail and let EMR finish initializing
+      TIMEOUT= is_master && TIMEOUT=3 || TIMEOUT=4
+      echo "bash -x $THIS_SCRIPT --continue > /tmp/cassandra-bootstrap.log" | at now + $TIMEOUT min
+      exit 0 # Bail and let EMR finish initializing
 fi
 
 MASTER_IP=$(xmllint --xpath "//property[name='yarn.resourcemanager.hostname']/value/text()"  /etc/hadoop/conf/yarn-site.xml)
@@ -37,4 +37,4 @@ sudo mkdir -p /mnt2/cassandra
 sudo docker run --name=cassandra -d --net=host \
      -v /mnt2/cassandra:/var/lib/cassandra \
      -e CASSANDRA_SEEDS=${MASTER_IP} \
-     daunnc/cassandra:2.2
+     daunnc/cassandra:3.7
