@@ -1,4 +1,4 @@
-export NAME := Landsat Demo ${USER}-hadoop
+export NAME := Landsat Demo ${USER}
 export MASTER_INSTANCE:=m3.xlarge
 export MASTER_PRICE := 0.5
 export WORKER_INSTANCE:=m3.2xlarge
