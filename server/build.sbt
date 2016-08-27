@@ -32,5 +32,9 @@ Revolver.settings
 
 assemblyShadeRules in assembly := {
   val shadePackage = "com.azavea.shaded.demo"
-  Seq(ShadeRule.rename("com.google.common.**" -> s"$shadePackage.google.common.@1").inAll)
+  Seq(
+    ShadeRule.rename("com.google.common.**" -> s"$shadePackage.google.common.@1")
+      .inLibrary("com.azavea.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis)
+      .inProject
+  )
 }
