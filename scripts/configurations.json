@@ -10,13 +10,30 @@
     "Classification": "hdfs-site",
     "Properties": {
       "dfs.replication": "1",
-      "dfs.permissions": "false"
+      "dfs.permissions": "false",
+      "dfs.datanode.max.xcievers": "16384",
+      "dfs.datanode.max.transfer.threads": "16384",
+      "dfs.datanode.balance.max.concurrent.moves": "1000",
+      "dfs.datanode.balance.bandwidthPerSec": "100000000"
     }
   },
   {
     "Classification": "yarn-site",
     "Properties": {
       "yarn.resourcemanager.am.max-attempts": "1"
+    }
+  },
+  {
+    "Classification": "hbase-site",
+    "Properties": {
+      "hbase.rootdir": "/hbase",
+      "hbase.hregion.max.filesize": "16777216",
+      "hbase.regionserver.handler.count": "30",
+      "hbase.hregion.memstore.flush.size": "16777216",
+      "hbase.zookeeper.property.dataDir": "/mnt/zookeeper",
+      "hbase.cluster.distributed": "true",
+      "hbase.client.scanner.caching": "100000",
+      "zookeeper.session.timeout": "60000"
     }
   },
   {
