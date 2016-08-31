@@ -34,7 +34,6 @@ assemblyShadeRules in assembly := {
   val shadePackage = "com.azavea.shaded.demo"
   Seq(
     ShadeRule.rename("com.google.common.**" -> s"$shadePackage.google.common.@1")
-      .inLibrary("com.azavea.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis)
-      .inProject
+      .inLibrary("com.azavea.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis).inAll
   )
 }
