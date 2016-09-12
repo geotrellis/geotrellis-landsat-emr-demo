@@ -7,11 +7,11 @@ fork in run := true
 connectInput in run := true
 
 libraryDependencies ++= Seq(
-  "com.azavea" %% "scala-landsat-util" % "0.2.0-SNAPSHOT",
+  "com.azavea" %% "scala-landsat-util" % "0.2.1-b1610a6",
   "com.azavea.geotrellis" %% "geotrellis-spark-etl" % Version.geotrellis,
-  "org.apache.spark"      %% "spark-core" % "1.5.2" % "provided",
+  "org.apache.spark"      %% "spark-core" % "2.0.0" % "provided",
   "com.azavea.geotrellis" %% "geotrellis-spark-testkit" % Version.geotrellis % "test",
-  "org.scalatest"         %%  "scalatest" % "2.2.0" % "test"
+  "org.scalatest"         %%  "scalatest"      % "3.0.0" % "test"
 )
 
 assemblyMergeStrategy in assembly := {

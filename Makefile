@@ -2,8 +2,8 @@ include config-aws.mk			# Vars related to AWS credentials and services used
 include config-emr.mk	    # Vars related to type and size of EMR cluster
 include config-ingest.mk  # Vars related to ingest step and spark parameters
 
-SERVER_ASSEMBLY := server/target/scala-2.10/server-assembly-0.1.0.jar
-INGEST_ASSEMBLY := ingest/target/scala-2.10/ingest-assembly-0.1.0.jar
+SERVER_ASSEMBLY := server/target/scala-2.11/server-assembly-0.1.0.jar
+INGEST_ASSEMBLY := ingest/target/scala-2.11/ingest-assembly-0.1.0.jar
 SCRIPT_RUNNER := s3://elasticmapreduce/libs/script-runner/script-runner.jar
 
 ifeq ($(USE_SPOT),true)
@@ -47,13 +47,13 @@ upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
 
 create-cluster:
 	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
---release-label emr-4.7.2 \
+--release-label emr-5.0.0 \
 --output text \
 --use-default-roles \
 --configurations "file://$(CURDIR)/scripts/configurations.json" \
 --log-uri ${S3_URI}/logs \
 --ec2-attributes KeyName=${EC2_KEY},SubnetId=${SUBNET_ID} \
---applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox \
+--applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin \
 --instance-groups \
 'Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTANCE},EbsConfiguration={EbsOptimized=true,EbsBlockDeviceConfigs=[{VolumeSpecification={VolumeType=io1,SizeInGB=500,Iops=5000},VolumesPerInstance=1}]}' \
 'Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE},EbsConfiguration={EbsOptimized=true,EbsBlockDeviceConfigs=[{VolumeSpecification={VolumeType=io1,SizeInGB=500,Iops=5000},VolumesPerInstance=1}]}' \
@@ -65,13 +65,13 @@ Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=
 
 create-cluster-hbase:
 	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
---release-label emr-4.7.2 \
+--release-label emr-5.0.0 \
 --output text \
 --use-default-roles \
 --configurations "file://$(CURDIR)/scripts/configurations.json" \
 --log-uri ${S3_URI}/logs \
 --ec2-attributes KeyName=${EC2_KEY},SubnetId=${SUBNET_ID} \
---applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox Name=HBase \
+--applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin Name=HBase \
 --instance-groups \
 Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTANCE} \
 Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE} \
