@@ -2,13 +2,14 @@ include config-aws.mk			# Vars related to AWS credentials and services used
 include config-emr.mk	    # Vars related to type and size of EMR cluster
 include config-ingest.mk  # Vars related to ingest step and spark parameters
 
-SERVER_ASSEMBLY := server/target/scala-2.10/server-assembly-0.1.0.jar
-INGEST_ASSEMBLY := ingest/target/scala-2.10/ingest-assembly-0.1.0.jar
+SERVER_ASSEMBLY := server/target/scala-2.11/server-assembly-0.1.0.jar
+INGEST_ASSEMBLY := ingest/target/scala-2.11/ingest-assembly-0.1.0.jar
 SCRIPT_RUNNER := s3://elasticmapreduce/libs/script-runner/script-runner.jar
 
 ifeq ($(USE_SPOT),true)
 MASTER_BID_PRICE:=BidPrice=${MASTER_PRICE},
 WORKER_BID_PRICE:=BidPrice=${WORKER_PRICE},
+BACKEND=accumulo
 endif
 
 ifdef COLOR
@@ -38,25 +39,45 @@ upload-code: ${SERVER_ASSEMBLY} ${INGEST_ASSEMBLY} scripts/emr/* viewer/site.tgz
 	@aws s3 cp scripts/emr/bootstrap-demo.sh ${S3_URI}/
 	@aws s3 cp scripts/emr/bootstrap-geowave.sh ${S3_URI}/
 	@aws s3 cp scripts/emr/geowave-install-lib.sh ${S3_URI}/
+	@aws s3 cp conf/backend-profiles.json ${S3_URI}/
+	@aws s3 cp conf/input.json ${S3_URI}/
+	@aws s3 cp conf/output.json ${S3_URI}/output.json
 	@aws s3 cp ${SERVER_ASSEMBLY} ${S3_URI}/
 	@aws s3 cp ${INGEST_ASSEMBLY} ${S3_URI}/
 
 create-cluster:
 	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
---release-label emr-4.5.0 \
+--release-label emr-5.0.0 \
 --output text \
 --use-default-roles \
 --configurations "file://$(CURDIR)/scripts/configurations.json" \
 --log-uri ${S3_URI}/logs \
 --ec2-attributes KeyName=${EC2_KEY},SubnetId=${SUBNET_ID} \
---applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin-Sandbox \
+--applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin \
+--instance-groups \
+'Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTANCE},EbsConfiguration={EbsOptimized=true,EbsBlockDeviceConfigs=[{VolumeSpecification={VolumeType=io1,SizeInGB=500,Iops=5000},VolumesPerInstance=1}]}' \
+'Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE},EbsConfiguration={EbsOptimized=true,EbsBlockDeviceConfigs=[{VolumeSpecification={VolumeType=io1,SizeInGB=500,Iops=5000},VolumesPerInstance=1}]}' \
+--bootstrap-actions \
+Name=BootstrapGeoWave,Path=${S3_URI}/bootstrap-geowave.sh \
+Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
+Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--s3u=${S3_URI},--backend=${BACKEND}] \
+| tee cluster-id.txt
+
+create-cluster-hbase:
+	aws emr create-cluster --name "${NAME}" ${COLOR_TAG} \
+--release-label emr-5.0.0 \
+--output text \
+--use-default-roles \
+--configurations "file://$(CURDIR)/scripts/configurations.json" \
+--log-uri ${S3_URI}/logs \
+--ec2-attributes KeyName=${EC2_KEY},SubnetId=${SUBNET_ID} \
+--applications Name=Ganglia Name=Hadoop Name=Hue Name=Spark Name=Zeppelin Name=HBase \
 --instance-groups \
 Name=Master,${MASTER_BID_PRICE}InstanceCount=1,InstanceGroupType=MASTER,InstanceType=${MASTER_INSTANCE} \
 Name=Workers,${WORKER_BID_PRICE}InstanceCount=${WORKER_COUNT},InstanceGroupType=CORE,InstanceType=${WORKER_INSTANCE} \
 --bootstrap-actions \
-Name=BootstrapGeoWave,Path=${S3_URI}/bootstrap-geowave.sh \
 Name=BootstrapDemo,Path=${S3_URI}/bootstrap-demo.sh,\
-Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz] \
+Args=[--tsj=${S3_URI}/server-assembly-0.1.0.jar,--site=${S3_URI}/site.tgz,--backend=hbase] \
 | tee cluster-id.txt
 
 ingest: LIMIT=9999
@@ -76,14 +97,9 @@ spark-submit,--master,yarn-cluster,\
 --conf,spark.yarn.executor.memoryOverhead=${YARN_OVERHEAD},\
 --conf,spark.yarn.driver.memoryOverhead=${YARN_OVERHEAD},\
 ${S3_URI}/ingest-assembly-0.1.0.jar,\
---layerName,"${LAYER_NAME}",\
---bbox,\"${BBOX}\",\
---startDate,${START_DATE},\
---endDate,${END_DATE},\
---maxCloudCoverage,${MAX_CLOUD_COVERAGE},\
---limit,${LIMIT},\
---output,accumulo,\
---params,\"instance=accumulo,table=tiles,user=root,password=secret\"\
+--input,"file:///tmp/input.json",\
+--output,"file:///tmp/output.json",\
+--backend-profiles,"file:///tmp/backend-profiles.json"\
 ] | cut -f2 | tee last-step-id.txt
 
 wait: INTERVAL:=60
@@ -116,19 +132,12 @@ proxy:
 ssh:
 	aws emr ssh --cluster-id ${CLUSTER_ID} --key-pair-file "${HOME}/${EC2_KEY}.pem"
 
-local-ingest: CATALOG=catalog
-local-ingest: LIMIT=9999
 local-ingest: ${INGEST_ASSEMBLY}
-	@if [ -z $$START_DATE ]; then echo "START_DATE is not set" && exit 1; fi
-	@if [ -z $$END_DATE ]; then echo "END_DATE is not set" && exit 1; fi
-
 	spark-submit --name "${NAME} Ingest" --master "local[4]" --driver-memory 4G \
 ${INGEST_ASSEMBLY} \
---layerName landsat \
---bbox ${BBOX} --startDate ${START_DATE} --endDate ${END_DATE} \
---output file \
---params path=${CATALOG} \
---limit ${LIMIT}
+--backend-profiles "file:///${PWD}/conf/backend-profiles.json" \
+--input "file://${PWD}/conf/input-local.json" \
+--output "file://${PWD}/conf/output-local.json"
 
 local-tile-server: CATALOG=catalog
 local-tile-server:

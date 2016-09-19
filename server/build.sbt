@@ -10,10 +10,13 @@ libraryDependencies ++= Seq(
   "com.azavea.geotrellis" %% "geotrellis-spark" % Version.geotrellis,
   "com.azavea.geotrellis" %% "geotrellis-s3" % Version.geotrellis,
   "com.azavea.geotrellis" %% "geotrellis-accumulo" % Version.geotrellis,
-  "org.apache.spark" %% "spark-core" % "1.5.2" % "provided",
+  "com.azavea.geotrellis" %% "geotrellis-hbase" % Version.geotrellis,
+  "com.azavea.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis,
+  "org.apache.spark"      %% "spark-core" % "2.0.0" % "provided",
+  "com.typesafe.akka"     %% "akka-actor" % "2.4.10",
   Dependencies.sprayRouting,
   Dependencies.sprayCan,
-  "org.scalatest"       %%  "scalatest"      % "2.2.0" % "test"
+  "org.scalatest"       %%  "scalatest"      % "3.0.0" % "test"
 )
 
 assemblyMergeStrategy in assembly := {
@@ -27,3 +30,11 @@ assemblyMergeStrategy in assembly := {
 }
 
 Revolver.settings
+
+assemblyShadeRules in assembly := {
+  val shadePackage = "com.azavea.shaded.demo"
+  Seq(
+    ShadeRule.rename("com.google.common.**" -> s"$shadePackage.google.common.@1")
+      .inLibrary("com.azavea.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis).inAll
+  )
+}

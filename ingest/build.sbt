@@ -7,14 +7,11 @@ fork in run := true
 connectInput in run := true
 
 libraryDependencies ++= Seq(
-  "com.azavea" %% "scala-landsat-util" % "0.2.0-32180dc",
-  "com.azavea.geotrellis" %% "geotrellis-spark" % Version.geotrellis,
-  "com.azavea.geotrellis" %% "geotrellis-s3" % Version.geotrellis,
-  "com.azavea.geotrellis" %% "geotrellis-accumulo" % Version.geotrellis,
+  "com.azavea" %% "scala-landsat-util" % "0.2.1-b1610a6",
+  "com.azavea.geotrellis" %% "geotrellis-spark-etl" % Version.geotrellis,
+  "org.apache.spark"      %% "spark-core" % "2.0.0" % "provided",
   "com.azavea.geotrellis" %% "geotrellis-spark-testkit" % Version.geotrellis % "test",
-  "org.apache.spark" %% "spark-core" % "1.5.2" % "provided",
-  "com.github.scopt" %% "scopt" % "3.3.0",
-  "org.scalatest"       %%  "scalatest"      % "2.2.0" % "test"
+  "org.scalatest"         %%  "scalatest"      % "3.0.0" % "test"
 )
 
 assemblyMergeStrategy in assembly := {
@@ -25,4 +22,15 @@ assemblyMergeStrategy in assembly := {
   case "META-INF/ECLIPSEF.RSA" => MergeStrategy.discard
   case "META-INF/ECLIPSEF.SF" => MergeStrategy.discard
   case _ => MergeStrategy.first
+}
+
+assemblyShadeRules in assembly := {
+  val shadePackage = "com.azavea.shaded.demo"
+  Seq(
+    ShadeRule.rename("com.google.common.**" -> s"$shadePackage.google.common.@1")
+      .inLibrary(
+        "com.azavea.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis,
+        "com.github.fge" % "json-schema-validator" % "2.2.6"
+      ).inAll
+  )
 }

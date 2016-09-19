@@ -31,6 +31,7 @@ object Render {
       val red = tile.band(0).convert(IntCellType).map(clamp _).normalize(min, max, 0, 255)
       val green = tile.band(1).convert(IntCellType).map(clamp _).normalize(min, max, 0, 255)
       val blue = tile.band(2).convert(IntCellType).map(clamp _).normalize(min, max, 0, 255)
+
       (red, green, blue)
     } else {
       // Planet Labs

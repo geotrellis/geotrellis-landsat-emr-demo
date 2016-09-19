@@ -19,6 +19,7 @@ trait ReaderSet {
   def attributeStore: AttributeStore
   def metadataReader: MetadataReader
   def layerReader: FilteringLayerReader[LayerId]
+  def layerCReader: CollectionLayerReader[LayerId]
   def singleBandTileReader: TileReader[SpaceTimeKey, Tile]
   def multiBandTileReader: TileReader[SpaceTimeKey, MultibandTile]
 

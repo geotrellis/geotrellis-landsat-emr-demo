@@ -191,6 +191,60 @@ Aside from editing these files we have two more ways to affect the behavior of t
  - Pass assign the variable in command line: `make NAME="My Cluster" create-cluster`
  - Instruct make overwrite defined vars with those found in the environment: `make -e create-cluster`
 
+#### Ingest configuration
+
+Inf the [./conf](conf) derectory provided templates for the ingest process. Detailed description can be found [there](https://github.com/geotrellis/geotrellis/blob/master/docs/spark-etl/spark-etl-intro.md).
+
+`output.json` configurations:
+
+##### Accumulo
+
+```json
+  "backend": {
+    "type": "accumulo",
+    "path": "tiles",
+    "profile": "accumulo-emr"
+  }
+```
+
+##### Cassandra
+
+```json
+  "backend": {
+    "type": "cassandra",
+    "path": "geotrellis.tiles",
+    "profile": "cassandra-emr"
+  }
+```
+
+##### File
+
+```json
+  "backend": {
+     "type": "file",
+     "path": "/tmp/catalog"
+   }
+```
+
+##### Hadoop
+
+```json
+  "backend": {
+    "type": "hadoop",
+    "path": "/catalog"
+  }
+```
+
+##### HBase
+
+```json
+  "backend": {
+    "type": "hbase",
+    "path": "tiles",
+    "profile": "hbase-emr"
+  }
+```
+
 #### Upload Code
 
 Now that we have configured AWS credentials we need to upload relevant files to S3 such that EMR is able to reference and download them during the bootstrap phase and during the job processing. Helpfully this will trigger rebuild if make notices that any of the source files have changed.
