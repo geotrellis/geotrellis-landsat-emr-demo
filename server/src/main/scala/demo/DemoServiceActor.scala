@@ -74,7 +74,7 @@ class DemoServiceActor(
       parameters('lat, 'lng, 'zoom ?) { (lat, lng, zoomLevel) =>
         cors {
           complete {
-            future {
+            Future {
               val zoom = zoomLevel
                 .map(_.toInt)
                 .getOrElse(metadataReader.layerNamesToMaxZooms(layer))
@@ -126,7 +126,7 @@ class DemoServiceActor(
           post {
             entity(as[String]) { json =>
               complete {
-                future {
+                Future {
                   val zoom = zoomLevel
                     .map(_.toInt)
                     .getOrElse(metadataReader.layerNamesToMaxZooms(layer))
@@ -189,7 +189,7 @@ class DemoServiceActor(
     get {
       import spray.json.DefaultJsonProtocol._
       complete {
-        future {
+        Future {
           val layerInfo =
             metadataReader.layerNamesToZooms //Map[String, Array[Int]]
               .keys
@@ -238,7 +238,7 @@ class DemoServiceActor(
       get {
         cors {
           complete {
-            future {
+            Future {
               val catalog = readerSet.layerReader
               val ccatalog = readerSet.layerCReader
               val id = LayerId(layer, zoom)
@@ -280,7 +280,7 @@ class DemoServiceActor(
       println(layer, zoom, x, y, time)
       respondWithMediaType(MediaTypes.`image/png`) {
         complete {
-          future {
+          Future {
             val tileOpt =
               readerSet.readMultibandTile(layer, zoom, x, y, time)
 
@@ -315,7 +315,7 @@ class DemoServiceActor(
         val time2 = DateTime.parse(timeString2, dateTimeFormat)
         respondWithMediaType(MediaTypes.`image/png`) {
           complete {
-            future {
+            Future {
               val tileOpt1 =
                 readerSet.readMultibandTile(layer, zoom, x, y, time1)
 
