@@ -10,8 +10,9 @@ import com.azavea.landsatutil.Landsat8Query
 import org.joda.time.LocalDate
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import com.typesafe.scalalogging.LazyLogging
 
-class TemporalMultibandLandsatInput extends LandsatInput[TemporalProjectedExtent, MultibandTile] {
+class TemporalMultibandLandsatInput extends LandsatInput[TemporalProjectedExtent, MultibandTile] with LazyLogging {
   val format = "temporal-landsat"
 
   def apply(conf: EtlConf)(implicit sc: SparkContext): RDD[(TemporalProjectedExtent, MultibandTile)] = {

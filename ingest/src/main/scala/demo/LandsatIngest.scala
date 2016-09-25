@@ -10,11 +10,12 @@ import geotrellis.spark.etl.config.EtlConf
 import geotrellis.spark.util._
 import geotrellis.spark.pyramid._
 
+import com.typesafe.scalalogging.LazyLogging
 import spray.json.DefaultJsonProtocol._
 import org.apache.spark._
 import org.apache.spark.rdd._
 
-object LandsatIngest extends Logging {
+object LandsatIngest extends LazyLogging {
 
   /** Accept a list of landsat image descriptors we will ingest into a geotrellis layer.
     * It is expected that the user will generate this list using `Landsat8Query` and prefilter.
@@ -57,7 +58,7 @@ object LandsatIngest extends Logging {
   }
 }
 
-object LandsatIngestMain extends Logging {
+object LandsatIngestMain extends LazyLogging {
   def main(args: Array[String]): Unit = {
     logger.info(s"Arguments: ${args.toSeq}")
     implicit val sc = SparkUtils.createSparkContext("GeoTrellis Landsat Ingest", new SparkConf(true))
