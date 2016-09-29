@@ -11,6 +11,7 @@ import geotrellis.spark.tiling._
 import com.azavea.landsatutil.LandsatImage
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import jp.ne.opt.chronoscala.Imports._
 
 import scala.util.Try
 

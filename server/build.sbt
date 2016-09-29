@@ -13,7 +13,7 @@ libraryDependencies ++= Seq(
   "com.azavea.geotrellis" %% "geotrellis-hbase" % Version.geotrellis,
   "com.azavea.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis,
   "org.apache.spark"      %% "spark-core" % "2.0.0" % "provided",
-  "com.typesafe.akka"     %% "akka-actor" % "2.4.10",
+  "com.typesafe.akka"     %% "akka-actor" % "2.3.15",
   Dependencies.sprayRouting,
   Dependencies.sprayCan,
   "org.scalatest"       %%  "scalatest"      % "3.0.0" % "test"

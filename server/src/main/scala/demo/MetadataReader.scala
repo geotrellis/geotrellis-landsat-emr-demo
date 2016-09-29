@@ -3,12 +3,9 @@ package demo
 
 import geotrellis.spark._
 import geotrellis.spark.io._
-import geotrellis.spark.io.json._
-import geotrellis.spark.tiling._
 
 import spray.json._
 import spray.json.DefaultJsonProtocol._
-import java.util.concurrent.ConcurrentHashMap
 
 /** Aside from reading our metadata we also do some processing to figure out how many time stamps we have */
 class MetadataReader(attributeStore: AttributeStore) {

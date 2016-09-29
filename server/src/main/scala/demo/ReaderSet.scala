@@ -8,11 +8,7 @@ import geotrellis.spark.io._
 import geotrellis.spark.io.avro._
 import geotrellis.spark.tiling._
 
-import com.github.nscala_time.time.Imports._
-import spray.json._
-
-import java.util.concurrent.ConcurrentHashMap
-import scala.reflect._
+import java.time.ZonedDateTime
 
 trait ReaderSet {
   val layoutScheme = ZoomedLayoutScheme(WebMercator, 256)
@@ -24,7 +20,7 @@ trait ReaderSet {
   def multiBandTileReader: TileReader[SpaceTimeKey, MultibandTile]
 
   /** Do "overzooming", where we resample lower zoom level tiles to serve out higher zoom level tiles. */
-  def readSinglebandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[Tile] =
+  def readSinglebandTile(layer: String, zoom: Int, x: Int, y: Int, time: ZonedDateTime): Option[Tile] =
     try {
       val z = metadataReader.layerNamesToMaxZooms(layer)
 
@@ -54,7 +50,7 @@ trait ReaderSet {
     }
 
   /** Do "overzooming", where we resample lower zoom level tiles to serve out higher zoom level tiles. */
-  def readMultibandTile(layer: String, zoom: Int, x: Int, y: Int, time: DateTime): Option[MultibandTile] =
+  def readMultibandTile(layer: String, zoom: Int, x: Int, y: Int, time: ZonedDateTime): Option[MultibandTile] =
     try {
       val z = metadataReader.layerNamesToMaxZooms(layer)
 
