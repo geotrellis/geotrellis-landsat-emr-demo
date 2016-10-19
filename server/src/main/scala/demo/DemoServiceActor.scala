@@ -14,6 +14,7 @@ import geotrellis.spark.tiling._
 import geotrellis.vector._
 import geotrellis.vector.io._
 import geotrellis.vector.reproject._
+
 import org.apache.spark._
 import akka.actor._
 import akka.io.IO
@@ -24,10 +25,11 @@ import spray.http.MediaTypes
 import spray.http.HttpHeaders.RawHeader
 import spray.httpx.SprayJsonSupport._
 import spray.json._
-import com.github.nscala_time.time.Imports._
 import com.typesafe.config.{ConfigFactory, ConfigRenderOptions}
-import com.github.nscala_time.time.Imports._
+import jp.ne.opt.chronoscala.Imports._
 
+import java.time.format.DateTimeFormatter
+import java.time.{ZonedDateTime, ZoneOffset}
 import scala.concurrent._
 import spire.syntax.cfor._
 
@@ -39,7 +41,7 @@ class DemoServiceActor(
 ) extends Actor with HttpService with CORSSupport {
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  val dateTimeFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ")
+  val dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
   val metadataReader = readerSet.metadataReader
   val attributeStore = readerSet.attributeStore
 
@@ -154,7 +156,7 @@ class DemoServiceActor(
 
                   val rdd1 = catalog
                     .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
-                    .where(At(DateTime.parse(time, dateTimeFormat)))
+                    .where(At(ZonedDateTime.parse(time, dateTimeFormat)))
                     .where(Intersects(extent))
                     .result
                   val answer1 = ContextRDD(rdd1.mapValues({ v => fn(v) }), rdd1.metadata).polygonalMean(geometry)
@@ -164,7 +166,7 @@ class DemoServiceActor(
                     case Some(otherTime) =>
                       val rdd2 = catalog
                         .query[SpaceTimeKey, MultibandTile, TileLayerMetadata[SpaceTimeKey]](layerId)
-                        .where(At(DateTime.parse(otherTime, dateTimeFormat)))
+                        .where(At(ZonedDateTime.parse(otherTime, dateTimeFormat)))
                         .where(Intersects(extent))
                         .result
 
@@ -207,7 +209,7 @@ class DemoServiceActor(
 
                 val times = attributeStore.read[Array[Long]](LayerId(name, 0), "times")
                   .map { instant =>
-                    dateTimeFormat.print(new DateTime(instant, DateTimeZone.forOffsetHours(-4)))
+                    dateTimeFormat.format(ZonedDateTime.ofInstant(instant, ZoneOffset.ofHours(-4)))
                   }
                 (name, extent, times.sorted)
               }
@@ -276,7 +278,7 @@ class DemoServiceActor(
   def tilesRoute =
   pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layer, zoom, x, y) =>
     parameters('time, 'operation ?) { (timeString, operationOpt) =>
-      val time = DateTime.parse(timeString, dateTimeFormat)
+      val time = ZonedDateTime.parse(timeString, dateTimeFormat)
       println(layer, zoom, x, y, time)
       respondWithMediaType(MediaTypes.`image/png`) {
         complete {
@@ -311,8 +313,8 @@ class DemoServiceActor(
   def diffRoute =
     pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layer, zoom, x, y) =>
       parameters('time1, 'time2, 'breaks ?, 'operation ?) { (timeString1, timeString2, breaksStrOpt, operationOpt) =>
-        val time1 = DateTime.parse(timeString1, dateTimeFormat)
-        val time2 = DateTime.parse(timeString2, dateTimeFormat)
+        val time1 = ZonedDateTime.parse(timeString1, dateTimeFormat)
+        val time2 = ZonedDateTime.parse(timeString2, dateTimeFormat)
         respondWithMediaType(MediaTypes.`image/png`) {
           complete {
             Future {

@@ -7,7 +7,7 @@ fork in run := true
 connectInput in run := true
 
 libraryDependencies ++= Seq(
-  "com.azavea" %% "scala-landsat-util" % "1.0.0-cca96ce",
+  "com.azavea" %% "scala-landsat-util" % "1.0.0-6526a8e",
   "com.azavea.geotrellis" %% "geotrellis-spark-etl" % Version.geotrellis,
   "org.apache.spark"      %% "spark-core" % "2.0.0" % "provided",
   "com.azavea.geotrellis" %% "geotrellis-spark-testkit" % Version.geotrellis % "test",

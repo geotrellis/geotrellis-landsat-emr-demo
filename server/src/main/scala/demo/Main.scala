@@ -6,13 +6,14 @@ import geotrellis.spark.io.hbase._
 
 import org.apache.spark._
 import org.apache.accumulo.core.client.security.tokens._
-import com.github.nscala_time.time.Imports._
 import akka.actor._
 import akka.io.IO
 import spray.can.Http
 
+import java.time.format.DateTimeFormatter
+
 object Main {
-  val dateTimeFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ssZ")
+  val dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
 
   /** Usage:
     * First argument is catalog type. Others are dependant on the first argument.

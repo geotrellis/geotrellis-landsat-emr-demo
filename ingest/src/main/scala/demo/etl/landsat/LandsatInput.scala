@@ -9,9 +9,9 @@ import geotrellis.spark.etl.config.EtlConf
 import geotrellis.spark.tiling._
 
 import com.azavea.landsatutil.LandsatImage
-import com.github.nscala_time.time.Imports._
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import jp.ne.opt.chronoscala.Imports._
 
 import scala.util.Try
 
