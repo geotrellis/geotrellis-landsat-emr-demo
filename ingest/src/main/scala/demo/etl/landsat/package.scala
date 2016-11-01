@@ -33,7 +33,7 @@ package object landsat {
       }
       case CassandraType => {
         CassandraAttributeStore(conf.outputProfile.collect { case cp: CassandraProfile =>
-            cp.getInstance
+          cp.getInstance
         }.get)
       }
       case HadoopType | FileType =>
@@ -54,39 +54,45 @@ package object landsat {
     }
 
     conf.output.backend.`type` match {
-      case AccumuloType => {
+      case AccumuloType =>
         new EtlConf(
           input  = conf.input,
-          output = conf.output,
-          inputProfile  = conf.inputProfile,
-          outputProfile = conf.outputProfile.map {
-            case ap: AccumuloProfile => if(ap.zookeepers.isEmpty) ap.copy(zookeepers = getDefaultFS) else ap
-            case p => p
-          })
-      }
-      case CassandraType => {
+          output = conf.output.copy(
+            backend = conf.output.backend.copy(
+              profile = conf.output.backend.profile.map {
+                case ap: AccumuloProfile => if(ap.zookeepers.isEmpty) ap.copy(zookeepers = getDefaultFS) else ap
+                case p => p
+              }
+            )
+          )
+        )
+      case CassandraType =>
         new EtlConf(
           input  = conf.input,
-          output = conf.output,
-          inputProfile  = conf.inputProfile,
-          outputProfile = conf.outputProfile.map {
-            case ap: CassandraProfile => if(ap.hosts.isEmpty) ap.copy(hosts = getDefaultFS) else ap
-            case p => p
-          })
-      }
-      case HBaseType => {
+          output = conf.output.copy(
+            backend = conf.output.backend.copy(
+              profile = conf.output.backend.profile.map {
+                case ap: CassandraProfile => if(ap.hosts.isEmpty) ap.copy(hosts = getDefaultFS) else ap
+                case p => p
+              }
+            )
+          )
+        )
+      case HBaseType =>
         new EtlConf(
           input  = conf.input,
-          output = conf.output,
-          inputProfile  = conf.inputProfile,
-          outputProfile = conf.outputProfile.map {
-            case ap: HBaseProfile => {
-              val nap = if (ap.zookeepers.isEmpty) ap.copy(zookeepers = getDefaultFS) else ap
-              if(ap.master.isEmpty) nap.copy(master = getDefaultFS) else nap
-            }
-            case p => p
-          })
-      }
+          output = conf.output.copy(
+            backend = conf.output.backend.copy(
+              profile = conf.output.backend.profile.map {
+                case ap: HBaseProfile => {
+                  val nap = if (ap.zookeepers.isEmpty) ap.copy(zookeepers = getDefaultFS) else ap
+                  if(ap.master.isEmpty) nap.copy(master = getDefaultFS) else nap
+                }
+                case p => p
+              }
+            )
+          )
+        )
       case _ => conf
     }
   }

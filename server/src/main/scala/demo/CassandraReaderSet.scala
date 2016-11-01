@@ -11,7 +11,7 @@ class CassandraReaderSet(instance: CassandraInstance)(implicit sc: SparkContext)
   val attributeStore = CassandraAttributeStore(instance)
   val metadataReader = new MetadataReader(attributeStore)
   val layerReader = CassandraLayerReader(instance)
-  val layerCReader = CassandraLayerCollectionReader(instance)
+  val layerCReader = CassandraCollectionLayerReader(instance)
   val singleBandTileReader = new TileReader[SpaceTimeKey, Tile](CassandraValueReader(instance))
   val multiBandTileReader = new TileReader[SpaceTimeKey, MultibandTile](CassandraValueReader(instance))
 }

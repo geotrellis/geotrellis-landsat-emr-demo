@@ -11,7 +11,7 @@ class AccumuloReaderSet(instance: AccumuloInstance)(implicit sc: SparkContext) e
   val attributeStore = AccumuloAttributeStore(instance.connector)
   val metadataReader = new MetadataReader(attributeStore)
   val layerReader = AccumuloLayerReader(instance)
-  val layerCReader = AccumuloLayerCollectionReader(instance)
+  val layerCReader = AccumuloCollectionLayerReader(instance)
   val singleBandTileReader = new TileReader[SpaceTimeKey, Tile](AccumuloValueReader(instance))
   val multiBandTileReader = new TileReader[SpaceTimeKey, MultibandTile](AccumuloValueReader(instance))
 }
