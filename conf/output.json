@@ -17,5 +17,6 @@
     "temporalResolution": 86400000
   },
   "layoutScheme": "zoomed",
-  "crs": "EPSG:3857"
+  "crs": "EPSG:3857",
+  "maxZoom": 13
 }
