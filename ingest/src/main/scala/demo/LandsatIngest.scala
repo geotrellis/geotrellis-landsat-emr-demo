@@ -28,8 +28,8 @@ object LandsatIngest extends LazyLogging {
     attributeStore: AttributeStore
   )(implicit sc: SparkContext): Unit = {
     // Our dataset can span UTM zones, we must reproject the tiles individually to common projection
-    val maxZoom = output.maxZoom.getOrElse(13) // We know this ahead of time based on Landsat resolution
     val output = conf.output
+    val maxZoom = output.maxZoom.getOrElse(13) // We know this ahead of time based on Landsat resolution
     val layerName = conf.input.name
     val destCRS = output.getCrs.get
     val resampleMethod = output.resampleMethod
