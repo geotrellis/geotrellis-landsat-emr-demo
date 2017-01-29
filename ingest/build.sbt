@@ -7,10 +7,10 @@ fork in run := true
 connectInput in run := true
 
 libraryDependencies ++= Seq(
-  "com.azavea" %% "scala-landsat-util" % "1.0.0-6526a8e",
-  "com.azavea.geotrellis" %% "geotrellis-spark-etl" % Version.geotrellis,
+  "com.azavea" %% "scala-landsat-util" % "1.0.0",
+  "org.locationtech.geotrellis" %% "geotrellis-spark-etl" % Version.geotrellis,
   "org.apache.spark"      %% "spark-core" % "2.0.0" % "provided",
-  "com.azavea.geotrellis" %% "geotrellis-spark-testkit" % Version.geotrellis % "test",
+  "org.locationtech.geotrellis" %% "geotrellis-spark-testkit" % Version.geotrellis % "test",
   "org.scalatest"         %%  "scalatest"      % "3.0.0" % "test"
 )
 
@@ -29,7 +29,7 @@ assemblyShadeRules in assembly := {
   Seq(
     ShadeRule.rename("com.google.common.**" -> s"$shadePackage.google.common.@1")
       .inLibrary(
-        "com.azavea.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis,
+        "org.locationtech.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis,
         "com.github.fge" % "json-schema-validator" % "2.2.6"
       ).inAll
   )

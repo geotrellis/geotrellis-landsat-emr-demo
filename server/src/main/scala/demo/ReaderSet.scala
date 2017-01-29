@@ -45,7 +45,7 @@ trait ReaderSet {
         Some(singleBandTileReader.read(LayerId(layer, zoom), SpaceTimeKey(x, y, time)))
       }
     } catch {
-      case e: TileNotFoundError =>
+      case e: ValueNotFoundError =>
         None
     }
 
@@ -75,7 +75,7 @@ trait ReaderSet {
         Some(multiBandTileReader.read(LayerId(layer, zoom), SpaceTimeKey(x, y, time)))
       }
     } catch {
-      case e: TileNotFoundError =>
+      case e: ValueNotFoundError =>
         None
     }
 }

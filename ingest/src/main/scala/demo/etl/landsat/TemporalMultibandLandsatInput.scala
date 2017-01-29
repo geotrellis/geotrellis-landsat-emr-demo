@@ -11,6 +11,7 @@ import org.apache.spark.rdd.RDD
 import com.typesafe.scalalogging.LazyLogging
 
 import java.time.{LocalDate, ZoneOffset}
+import scala.util.{Success, Failure}
 
 class TemporalMultibandLandsatInput extends LandsatInput[TemporalProjectedExtent, MultibandTile] with LazyLogging {
   val format = "temporal-landsat"
@@ -18,12 +19,32 @@ class TemporalMultibandLandsatInput extends LandsatInput[TemporalProjectedExtent
   def apply(conf: EtlConf)(implicit sc: SparkContext): RDD[(TemporalProjectedExtent, MultibandTile)] = {
     val input = conf.landsatInput
 
-    val images = Landsat8Query()
-      .withStartDate(input.get('startDate).map(LocalDate.parse).getOrElse(LocalDate.of(2014,1,1)).atStartOfDay(ZoneOffset.UTC))
-      .withEndDate(input.get('endDate).map(LocalDate.parse).getOrElse(LocalDate.of(2015,1,1)).atStartOfDay(ZoneOffset.UTC))
-      .withMaxCloudCoverage(input.get('maxCloudCoverage).map(_.toDouble).getOrElse(100d))
-      .intersects(Extent.fromString(input('bbox)))
-      .collect()
+    val images =
+      Landsat8Query()
+        .withStartDate(
+          input
+            .get('startDate)
+            .map(LocalDate.parse)
+            .getOrElse(LocalDate.of(2014,1,1))
+            .atStartOfDay(ZoneOffset.UTC)
+        ).withEndDate(
+          input
+            .get('endDate)
+            .map(LocalDate.parse)
+            .getOrElse(LocalDate.of(2015,1,1))
+            .atStartOfDay(ZoneOffset.UTC)
+        )
+        .withMaxCloudCoverage(
+          input
+            .get('maxCloudCoverage)
+            .map(_.toDouble)
+            .getOrElse(100d)
+        )
+        .intersects(Extent.fromString(input('bbox)))
+        .collect() match {
+          case Success(r) => r
+          case Failure(e) => throw e
+        }
 
     logger.info(s"Found ${images.length} landsat images")
 

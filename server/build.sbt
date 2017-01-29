@@ -7,11 +7,11 @@ fork in run := true
 connectInput in run := true
 
 libraryDependencies ++= Seq(
-  "com.azavea.geotrellis" %% "geotrellis-spark" % Version.geotrellis,
-  "com.azavea.geotrellis" %% "geotrellis-s3" % Version.geotrellis,
-  "com.azavea.geotrellis" %% "geotrellis-accumulo" % Version.geotrellis,
-  "com.azavea.geotrellis" %% "geotrellis-hbase" % Version.geotrellis,
-  "com.azavea.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis,
+  "org.locationtech.geotrellis" %% "geotrellis-spark" % Version.geotrellis,
+  "org.locationtech.geotrellis" %% "geotrellis-s3" % Version.geotrellis,
+  "org.locationtech.geotrellis" %% "geotrellis-accumulo" % Version.geotrellis,
+  "org.locationtech.geotrellis" %% "geotrellis-hbase" % Version.geotrellis,
+  "org.locationtech.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis,
   "org.apache.spark"      %% "spark-core" % "2.0.0" % "provided",
   "com.typesafe.akka"     %% "akka-actor" % "2.3.15",
   Dependencies.sprayRouting,
@@ -35,6 +35,6 @@ assemblyShadeRules in assembly := {
   val shadePackage = "com.azavea.shaded.demo"
   Seq(
     ShadeRule.rename("com.google.common.**" -> s"$shadePackage.google.common.@1")
-      .inLibrary("com.azavea.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis).inAll
+      .inLibrary("org.locationtech.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis).inAll
   )
 }
