@@ -5,7 +5,6 @@ import geotrellis.raster._
 import geotrellis.raster.resample._
 import geotrellis.spark._
 import geotrellis.spark.io._
-import geotrellis.spark.io.avro._
 import geotrellis.spark.tiling._
 
 import java.time.ZonedDateTime

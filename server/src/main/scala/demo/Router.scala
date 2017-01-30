@@ -1,49 +1,41 @@
 package demo
 
+import akka.http.scaladsl.server.Directives
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaTypes}
+import akka.http.scaladsl.unmarshalling.Unmarshaller._
+import ch.megard.akka.http.cors.CorsDirectives._
+import com.typesafe.config._
 import geotrellis.proj4._
 import geotrellis.raster._
-import geotrellis.raster.histogram._
-import geotrellis.raster.io.geotiff._
-import geotrellis.raster.rasterize._
+import geotrellis.raster.interpolation._
 import geotrellis.raster.render._
-import geotrellis.raster.resample._
 import geotrellis.spark._
 import geotrellis.spark.io._
-import geotrellis.raster.summary.polygonal._
 import geotrellis.spark.tiling._
 import geotrellis.vector._
 import geotrellis.vector.io._
-import geotrellis.vector.reproject._
-
-import org.apache.spark._
-import akka.actor._
-import akka.io.IO
-import spray.can.Http
-import spray.routing._
-import spray.routing.directives.CachingDirectives
-import spray.http.MediaTypes
-import spray.http.HttpHeaders.RawHeader
-import spray.httpx.SprayJsonSupport._
+import geotrellis.vector.io.json._
+import org.apache.spark.SparkContext
 import spray.json._
-import com.typesafe.config.{ConfigFactory, ConfigRenderOptions}
-import jp.ne.opt.chronoscala.Imports._
 
+import java.lang.management.ManagementFactory
 import java.time.format.DateTimeFormatter
 import java.time.{ZonedDateTime, ZoneOffset}
-import scala.concurrent._
-import spire.syntax.cfor._
 
+import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.util.Try
 
-class DemoServiceActor(
-  readerSet: ReaderSet,
-  sc: SparkContext
-) extends Actor with HttpService with CORSSupport {
+class Router(readerSet: ReaderSet, sc: SparkContext) extends Directives with AkkaSystem.LoggerExecutor {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
   val metadataReader = readerSet.metadataReader
   val attributeStore = readerSet.attributeStore
+
+  def pngAsHttpResponse(png: Png): HttpResponse =
+    HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`image/png`), png.bytes))
 
   def timedCreate[T](f: => T): (T, String) = {
     val s = System.currentTimeMillis
@@ -57,10 +49,7 @@ class DemoServiceActor(
   def isLandsat(name: String) =
     name.contains("landsat")
 
-  def actorRefFactory = context
-  def receive = runRoute(root)
-
-  def root =
+  def routes =
     path("ping") { complete { "pong\n" } } ~
       path("catalog") { catalogRoute }  ~
       pathPrefix("tiles") { tilesRoute } ~
@@ -74,7 +63,7 @@ class DemoServiceActor(
 
     pathPrefix(Segment / Segment) { (layer, op) =>
       parameters('lat, 'lng, 'zoom ?) { (lat, lng, zoomLevel) =>
-        cors {
+        cors() {
           complete {
             Future {
               val zoom = zoomLevel
@@ -124,7 +113,7 @@ class DemoServiceActor(
 
     pathPrefix(Segment / Segment) { (layer, op) =>
       parameters('time, 'otherTime ?, 'zoom ?) { (time, otherTime, zoomLevel) =>
-        cors {
+        cors() {
           post {
             entity(as[String]) { json =>
               complete {
@@ -187,50 +176,50 @@ class DemoServiceActor(
 
   /** Return a JSON representation of the catalog */
   def catalogRoute =
-  cors {
-    get {
-      import spray.json.DefaultJsonProtocol._
-      complete {
-        Future {
-          val layerInfo =
-            metadataReader.layerNamesToZooms //Map[String, Array[Int]]
-              .keys
-              .toList
-              .sorted
-              .map { name =>
-                // assemble catalog from metadata common to all zoom levels
-                val extent = {
-                  val (extent, crs) = Try {
-                    attributeStore.read[(Extent, CRS)](LayerId(name, 0), "extent")
-                  }.getOrElse((LatLng.worldExtent, LatLng))
+    cors() {
+      get {
+        import spray.json.DefaultJsonProtocol._
+        complete {
+          Future {
+            val layerInfo =
+              metadataReader.layerNamesToZooms //Map[String, Array[Int]]
+                .keys
+                .toList
+                .sorted
+                .map { name =>
+                  // assemble catalog from metadata common to all zoom levels
+                  val extent = {
+                    val (extent, crs) = Try {
+                      attributeStore.read[(Extent, CRS)](LayerId(name, 0), "extent")
+                    }.getOrElse((LatLng.worldExtent, LatLng))
 
-                  extent.reproject(crs, LatLng)
+                    extent.reproject(crs, LatLng)
+                  }
+
+                  val times = attributeStore.read[Array[Long]](LayerId(name, 0), "times")
+                    .map { instant =>
+                      dateTimeFormat.format(ZonedDateTime.ofInstant(instant, ZoneOffset.ofHours(-4)))
+                    }
+                  (name, extent, times.sorted)
                 }
 
-                val times = attributeStore.read[Array[Long]](LayerId(name, 0), "times")
-                  .map { instant =>
-                    dateTimeFormat.format(ZonedDateTime.ofInstant(instant, ZoneOffset.ofHours(-4)))
-                  }
-                (name, extent, times.sorted)
-              }
 
-
-          JsObject(
-            "layers" ->
-              layerInfo.map { li =>
-                val (name, extent, times) = li
-                JsObject(
-                  "name" -> JsString(name),
-                  "extent" -> JsArray(Vector(Vector(extent.xmin, extent.ymin).toJson, Vector(extent.xmax, extent.ymax).toJson)),
-                  "times" -> times.toJson,
-                  "isLandsat" -> JsBoolean(true)
-                )
-              }.toJson
-          )
+            JsObject(
+              "layers" ->
+                layerInfo.map { li =>
+                  val (name, extent, times) = li
+                  JsObject(
+                    "name" -> JsString(name),
+                    "extent" -> JsArray(Vector(Vector(extent.xmin, extent.ymin).toJson, Vector(extent.xmax, extent.ymax).toJson)),
+                    "times" -> times.toJson,
+                    "isLandsat" -> JsBoolean(true)
+                  )
+                }.toJson
+            )
+          }
         }
       }
     }
-  }
 
   def readallRoute = {
     import spray.json._
@@ -238,7 +227,7 @@ class DemoServiceActor(
 
     pathPrefix(Segment / IntNumber) { (layer, zoom) =>
       get {
-        cors {
+        cors() {
           complete {
             Future {
               val catalog = readerSet.layerReader
@@ -279,31 +268,29 @@ class DemoServiceActor(
   pathPrefix(Segment / IntNumber / IntNumber / IntNumber) { (layer, zoom, x, y) =>
     parameters('time, 'operation ?) { (timeString, operationOpt) =>
       val time = ZonedDateTime.parse(timeString, dateTimeFormat)
-      println(layer, zoom, x, y, time)
-      respondWithMediaType(MediaTypes.`image/png`) {
-        complete {
-          Future {
-            val tileOpt =
-              readerSet.readMultibandTile(layer, zoom, x, y, time)
+      // println(layer, zoom, x, y, time)
+      complete {
+        Future {
+          val tileOpt =
+            readerSet.readMultibandTile(layer, zoom, x, y, time)
 
-            tileOpt.map { tile =>
-              val png =
-                operationOpt match {
-                  case Some(op) =>
-                    op match {
-                      case "ndvi" =>
-                        Render.ndvi(tile)
-                      case "ndwi" =>
-                        Render.ndwi(tile)
-                      case _ =>
-                        sys.error(s"UNKNOWN OPERATION $op")
-                    }
-                  case None =>
-                    Render.image(tile)
-                }
-              println(s"BYTES: ${png.bytes.length}")
-              png.bytes
-            }
+          tileOpt.map { tile =>
+            val png =
+              operationOpt match {
+                case Some(op) =>
+                  op match {
+                    case "ndvi" =>
+                      Render.ndvi(tile)
+                    case "ndwi" =>
+                      Render.ndwi(tile)
+                    case _ =>
+                      sys.error(s"UNKNOWN OPERATION $op")
+                  }
+                case None =>
+                  Render.image(tile)
+              }
+            println(s"BYTES: ${png.bytes.length}")
+            pngAsHttpResponse(png)
           }
         }
       }
@@ -315,35 +302,33 @@ class DemoServiceActor(
       parameters('time1, 'time2, 'breaks ?, 'operation ?) { (timeString1, timeString2, breaksStrOpt, operationOpt) =>
         val time1 = ZonedDateTime.parse(timeString1, dateTimeFormat)
         val time2 = ZonedDateTime.parse(timeString2, dateTimeFormat)
-        respondWithMediaType(MediaTypes.`image/png`) {
-          complete {
-            Future {
-              val tileOpt1 =
-                readerSet.readMultibandTile(layer, zoom, x, y, time1)
+        complete {
+          Future {
+            val tileOpt1 =
+              readerSet.readMultibandTile(layer, zoom, x, y, time1)
 
-              val tileOpt2 =
-                tileOpt1.flatMap { tile1 =>
-                  readerSet.readMultibandTile(layer, zoom, x, y, time2).map { tile2 => (tile1, tile2) }
+            val tileOpt2 =
+              tileOpt1.flatMap { tile1 =>
+                readerSet.readMultibandTile(layer, zoom, x, y, time2).map { tile2 => (tile1, tile2) }
+              }
+
+            tileOpt2.map { case (tile1, tile2) =>
+              val png =
+                operationOpt match {
+                  case Some(op) =>
+                    op match {
+                      case "ndvi" =>
+                        Render.ndvi(tile1, tile2)
+                      case "ndwi" =>
+                        Render.ndwi(tile1, tile2)
+                      case _ =>
+                        sys.error(s"UNKNOWN OPERATION $op")
+                    }
+                  case None =>
+                    ???
                 }
 
-              tileOpt2.map { case (tile1, tile2) =>
-                val png =
-                  operationOpt match {
-                    case Some(op) =>
-                      op match {
-                        case "ndvi" =>
-                          Render.ndvi(tile1, tile2)
-                        case "ndwi" =>
-                          Render.ndwi(tile1, tile2)
-                        case _ =>
-                          sys.error(s"UNKNOWN OPERATION $op")
-                      }
-                    case None =>
-                      ???
-                  }
-
-                png.bytes
-              }
+              pngAsHttpResponse(png)
             }
           }
         }

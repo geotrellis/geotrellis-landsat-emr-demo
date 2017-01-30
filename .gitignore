@@ -9,6 +9,7 @@ cluster-id.txt
 last-step-id.txt
 target
 .ensime
+.ensime_cache/
 \#*#
 *~
 .#*
@@ -35,6 +36,7 @@ _SUCCESS
 .ensime_cache
 tags
 catalog
+catalog-cache/
 scripts/upsert.json
 config-aws.mk
 logs

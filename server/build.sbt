@@ -13,9 +13,9 @@ libraryDependencies ++= Seq(
   "org.locationtech.geotrellis" %% "geotrellis-hbase" % Version.geotrellis,
   "org.locationtech.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis,
   "org.apache.spark"      %% "spark-core" % "2.0.0" % "provided",
-  "com.typesafe.akka"     %% "akka-actor" % "2.3.15",
-  Dependencies.sprayRouting,
-  Dependencies.sprayCan,
+  Dependencies.akkaHttp,
+  "com.typesafe.akka" %% "akka-http-spray-json" % "10.0.3",
+  "ch.megard" %% "akka-http-cors" % "0.1.10",
   "org.scalatest"       %%  "scalatest"      % "3.0.0" % "test"
 )
 
@@ -34,7 +34,6 @@ Revolver.settings
 assemblyShadeRules in assembly := {
   val shadePackage = "com.azavea.shaded.demo"
   Seq(
-    ShadeRule.rename("com.google.common.**" -> s"$shadePackage.google.common.@1")
-      .inLibrary("org.locationtech.geotrellis" %% "geotrellis-cassandra" % Version.geotrellis).inAll
+    ShadeRule.rename("com.google.common.**" -> s"$shadePackage.google.common.@1").inProject
   )
 }
