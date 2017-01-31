@@ -8,21 +8,27 @@ import org.apache.spark._
 import org.apache.accumulo.core.client.security.tokens._
 import akka.actor._
 import akka.io.IO
-import spray.can.Http
 
 import java.time.format.DateTimeFormatter
 
-object Main {
-  val dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
+import akka.actor.ActorSystem
+import akka.event.Logging
+import akka.http.scaladsl.Http
+import akka.stream.ActorMaterializer
 
-  /** Usage:
-    * First argument is catalog type. Others are dependant on the first argument.
-    *
-    * local CATALOG_DIR
-    * s3 BUCKET_NAME CATALOG_KEY
-    * accumulo INSTANCE ZOOKEEPER USER PASSWORD
-    */
+object AkkaSystem {
+  implicit val system = ActorSystem("iaas-system")
+  implicit val materializer = ActorMaterializer()
+
+  trait LoggerExecutor {
+    protected implicit val log = Logging(system, "app")
+  }
+}
+
+object Main {
   def main(args: Array[String]): Unit = {
+    import AkkaSystem._
+
     val conf: SparkConf =
       new SparkConf()
         .setIfMissing("spark.master", "local[*]")
@@ -70,13 +76,29 @@ object Main {
         sys.error(s"Unknown catalog type ${args(0)}")
       }
 
-    implicit val system = akka.actor.ActorSystem("demo-system")
-
-    // create and start our service actor
-    val service =
-      system.actorOf(Props(classOf[DemoServiceActor], readerSet, sc), "demo")
-
-    // start a new HTTP server on port 8899 with our service actor as the handler
-    IO(Http) ! Http.Bind(service, "0.0.0.0", 8899)
+    val router = new Router(readerSet, sc)
+    Http().bindAndHandle(router.routes, "0.0.0.0", 8899)
   }
 }
+
+
+// object Main {
+//   val dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
+
+//   /** Usage:
+//     * First argument is catalog type. Others are dependant on the first argument.
+//     *
+//     * local CATALOG_DIR
+//     * s3 BUCKET_NAME CATALOG_KEY
+//     * accumulo INSTANCE ZOOKEEPER USER PASSWORD
+//     */
+//   def main(args: Array[String]): Unit = {
+
+//     // create and start our service actor
+//     val service =
+//       system.actorOf(Props(classOf[DemoServiceActor], readerSet, sc), "demo")
+
+//     // start a new HTTP server on port 8899 with our service actor as the handler
+//     IO(Http) ! Http.Bind(service, "0.0.0.0", 8899)
+//   }
+// }
